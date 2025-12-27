@@ -225,10 +225,9 @@ AWS_S3_CUSTOM_DOMAIN = (
 AWS_S3_USE_SSL = True
 AWS_S3_VERIFY = True
 AWS_S3_FILE_OVERWRITE = False
-AWS_DEFAULT_ACL = 'public-read'
+AWS_DEFAULT_ACL = None
 AWS_S3_OBJECT_PARAMETERS = {
     "CacheControl": "max-age=86400",
-    "ACL": "public-read",
 }
 
 # Configure storage backends

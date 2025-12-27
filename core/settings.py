@@ -10,7 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,17 +22,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-tg7_fpv_^gwed6r@9+an$kb5+ydm@vuwd_)m-4j8&f&jod+&tb"
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-tg7_fpv_^gwed6r@9+an$kb5+ydm@vuwd_)m-4j8&f&jod+&tb')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',') if os.environ.get('ALLOWED_HOSTS') else ['*']
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    "unfold",  # Modern admin interface
+    "unfold.contrib.filters",  # optional, if special filters are needed
+    "unfold.contrib.forms",  # optional, if special form elements are needed
+    "unfold.contrib.inlines",  # optional, if special inlines are needed
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -40,12 +46,15 @@ INSTALLED_APPS = [
     # Third party apps
     "rest_framework",
     "django_filters",
+    "corsheaders",
     # Local apps
     "presscentre",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -78,10 +87,9 @@ WSGI_APPLICATION = "core.wsgi.application"
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    'default': dj_database_url.config(
+        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}'
+    )
 }
 
 
@@ -104,6 +112,16 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+# CORS settings
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
@@ -120,7 +138,35 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# WhiteNoise settings
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Unfold settings
+UNFOLD = {
+    "SITE_TITLE": "Университет Салымбекова - Админка",
+    "SITE_HEADER": "Админка университета",
+    "SITE_URL": "/",
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": True,
+    "THEME": "dark",
+    "COLORS": {
+        "primary": {
+            "50": "250 245 255",
+            "100": "243 232 255", 
+            "200": "233 213 255",
+            "300": "216 180 254",
+            "400": "196 181 253",
+            "500": "168 85 247",
+            "600": "147 51 234",
+            "700": "126 34 206",
+            "800": "107 33 168",
+            "900": "88 28 135",
+        },
+    },
+}

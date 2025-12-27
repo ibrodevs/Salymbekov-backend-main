@@ -4,12 +4,10 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics
-from .models import Category, News, Publication, PublicationCategory
+from .models import Category, News
 from .serializers import (
     CategorySerializer,
     NewsSerializer,
-    PublicationSerializer,
-    PublicationCategorySerializer,
 )
 
 
@@ -35,15 +33,9 @@ class CategoryViewSet(LocalizationMixin, ReadOnlyModelViewSet):
     ordering_fields = ["id", "title_ru", "title_en", "title_kg"]
 
 
-class BannerNewsViewSet(LocalizationMixin, generics.ListAPIView):
-
-    queryset = News.objects.filter(is_banner=True)
-    serializer_class = NewsSerializer
-
-
 class NewsViewSet(LocalizationMixin, ReadOnlyModelViewSet):
 
-    queryset = News.objects.select_related("category").all().order_by("-created_at")
+    queryset = News.objects.select_related("category").prefetch_related("gallery").all().order_by("-created_at")
     serializer_class = NewsSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["category", "is_recommended"]
@@ -68,45 +60,3 @@ class NewsViewSet(LocalizationMixin, ReadOnlyModelViewSet):
 
         serializer = self.get_serializer(recommended_news, many=True)
         return Response(serializer.data)
-
-
-class PublicationViewSet(LocalizationMixin, ReadOnlyModelViewSet):
-    """
-    Read-only API для публикаций (PDF)
-    Поддерживает: ?lang=ru|en|kg и фильтр по category
-    """
-
-    queryset = (
-        Publication.objects.select_related("category")
-        .all()
-        .order_by("-published_at", "-created_at")
-    )
-    serializer_class = PublicationSerializer
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ["category"]
-    search_fields = [
-        "title_en",
-        "title_ru",
-        "title_kg",
-        "short_description_en",
-        "short_description_ru",
-        "short_description_kg",
-        "description_en",
-        "description_ru",
-        "description_kg",
-        "author",
-    ]
-    ordering_fields = ["published_at", "created_at", "title_ru"]
-
-
-class PublicationCategoryViewSet(LocalizationMixin, ReadOnlyModelViewSet):
-    """
-    Read-only API для категорий публикаций
-    Поддерживает: ?lang=ru|en|kg
-    """
-
-    queryset = PublicationCategory.objects.all().order_by("id")
-    serializer_class = PublicationCategorySerializer
-    filter_backends = [SearchFilter, OrderingFilter]
-    search_fields = ["title_en", "title_ru", "title_kg"]
-    ordering_fields = ["id", "title_ru", "title_en", "title_kg"]

@@ -59,8 +59,11 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "django_filters",
     "storages",
-    "presscentre",
     "easy_thumbnails",
+
+    "presscentre",
+    'banners',
+    'academic_council',
 ]
 
 

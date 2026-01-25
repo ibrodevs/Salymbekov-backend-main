@@ -7,7 +7,7 @@ class AcademicCouncilSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = AcademicCouncil
-        fields = ['name, photo, role']
+        fields = ['name','photo', 'role']
 
     def get_name(self, obj):
         lang = self.context.get('lang', 'ru')

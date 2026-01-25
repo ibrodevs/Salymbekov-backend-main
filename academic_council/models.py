@@ -10,7 +10,7 @@ class AcademicCouncil(models.Model):
     photo = models.ImageField(upload_to='acadmic_council_photos/')
 
     def __str__(self):
-        return self.name
+        return self.name_ru
 
     def get_name(self, lang='ru'):
         return getattr(self, f'name_{lang}', self.name_ru)

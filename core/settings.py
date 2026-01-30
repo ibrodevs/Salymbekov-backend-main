@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "easy_thumbnails",
 
     "presscentre",
+    "partners",
     'banners',
     'academic_council',
 ]

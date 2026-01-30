@@ -26,6 +26,7 @@ urlpatterns = [
     path("api/presscentre/", include("presscentre.urls")),
     path('api/academic-council/', include('academic_council.urls')),
     path('api/banners/', include('banners.urls')),
+    path('api/', include('partners.urls'))
 ]
 
 # Serve media files in development

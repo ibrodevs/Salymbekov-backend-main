@@ -20,15 +20,20 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("ckeditor5/", include('django_ckeditor_5.urls')),
     path("api/presscentre/", include("presscentre.urls")),
     path('api/academic-council/', include('academic_council.urls')),
     path('api/banners/', include('banners.urls')),
-    path('api/', include('partners.urls'))
+    path('api/', include('partners.urls')),
+    path('api/', include('about.urls')),
 ]
 
 # Serve media files in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+

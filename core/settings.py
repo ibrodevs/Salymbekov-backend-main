@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "partners",
     'banners',
     'academic_council',
+    'about',
 ]
 
 

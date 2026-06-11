@@ -1,12 +1,28 @@
 from django import forms
 from django.contrib import admin
-from .models import DevelopmentCouncilMember, ScientificTechnicalCouncilMember
+from .models import DevelopmentCouncilMember, PageContent, PageMedia, ScientificTechnicalCouncilMember
 
 LANGUAGE_CHOICES = [
     ('ru', 'Русский'),
     ('en', 'English'),
     ('kg', 'Кыргызча'),
 ]
+
+
+class PageMediaInline(admin.TabularInline):
+    model = PageMedia
+    extra = 1
+    fields = ('key', 'title', 'media_type', 'file', 'external_url', 'order', 'is_active')
+
+
+@admin.register(PageContent)
+class PageContentAdmin(admin.ModelAdmin):
+    inlines = [PageMediaInline]
+    list_display = ('slug', 'path', 'title_ru', 'is_active', 'updated_at')
+    list_filter = ('is_active',)
+    search_fields = ('slug', 'path', 'title_ru', 'title_en', 'title_kg')
+    prepopulated_fields = {'slug': ('title_ru',)}
+    readonly_fields = ('created_at', 'updated_at')
 
 
 class DevelopmentCouncilForm(forms.ModelForm):

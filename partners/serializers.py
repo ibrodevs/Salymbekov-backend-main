@@ -7,7 +7,7 @@ class PartnerSerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = Partner
-		fields = ['logo', 'name', 'description', 'coord1', 'coord2']
+		fields = ['id', 'logo', 'name', 'description', 'coord1', 'coord2']
 
 	def get_name(self, obj):
 		return obj.get_name(language=self.context.get('language', 'ru'))

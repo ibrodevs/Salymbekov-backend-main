@@ -239,6 +239,16 @@ AWS_S3_OBJECT_PARAMETERS = {
 }
 
 # Configure storage backends
+# By default use non-manifest static storage during development to avoid
+# requiring `collectstatic`/manifest entries. Set the environment variable
+# `STATICFILES_USE_MANIFEST=True` to force manifest-backed storage.
+USE_STATICFILES_MANIFEST = os.getenv("STATICFILES_USE_MANIFEST", "False").lower() == "true"
+STATICFILES_BACKEND = (
+    "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    if USE_STATICFILES_MANIFEST
+    else "whitenoise.storage.CompressedStaticFilesStorage"
+)
+
 if AWS_ACCESS_KEY_ID and AWS_STORAGE_BUCKET_NAME:
     # Use S3 for media files
     STORAGES = {
@@ -246,7 +256,7 @@ if AWS_ACCESS_KEY_ID and AWS_STORAGE_BUCKET_NAME:
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         },
         "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+            "BACKEND": STATICFILES_BACKEND,
         },
     }
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
@@ -257,7 +267,7 @@ else:
             "BACKEND": "django.core.files.storage.FileSystemStorage",
         },
         "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+            "BACKEND": STATICFILES_BACKEND,
         },
     }
     MEDIA_URL = "/media/"

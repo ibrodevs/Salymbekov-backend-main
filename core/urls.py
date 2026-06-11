@@ -30,10 +30,10 @@ urlpatterns = [
     path('api/banners/', include('banners.urls')),
     path('api/', include('partners.urls')),
     path('api/', include('about.urls')),
+    path('api/', include('cms_pages.urls')),
 ]
 
 # Serve media files in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-
 

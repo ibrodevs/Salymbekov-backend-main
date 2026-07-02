@@ -41,8 +41,7 @@ class PageLinkInline(TabularInline):
     ordering = ["order"]
 
 
-@admin.register(Page)
-class PageAdmin(ModelAdmin):
+class BaseCmsPageAdmin(ModelAdmin):
     list_display = [
         "admin_title",
         "path",
@@ -119,3 +118,8 @@ class PageAdmin(ModelAdmin):
     @admin.display(boolean=True, description="Контент готов")
     def content_ready(self, obj):
         return obj.has_meaningful_content
+
+
+@admin.register(Page)
+class PageAdmin(BaseCmsPageAdmin):
+    pass

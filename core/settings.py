@@ -68,6 +68,9 @@ INSTALLED_APPS = [
     'banners',
     'academic_council',
     'about',
+    "cms_pages",
+    "about_pages",
+    "program_pages",
 ]
 
 

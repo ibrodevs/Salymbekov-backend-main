@@ -1,9 +1,12 @@
 import json
 from pathlib import Path
 from urllib.parse import urlparse
+from urllib.request import urlopen
 
+from django.core.files.base import ContentFile
 from django.core.files import File
 from django.core.management.base import BaseCommand
+from django.utils.text import slugify
 
 from cms_pages.models import Page, PageDocument, PageLink, PageMedia
 
@@ -89,12 +92,18 @@ class Command(BaseCommand):
             default=None,
             help="Импортировать только одну страницу по пути, например /university/mission.",
         )
+        parser.add_argument(
+            "--download-external-assets",
+            action="store_true",
+            help="Скачивать внешние изображения и документы в Django storage вместо сохранения внешних ссылок.",
+        )
 
     def handle(self, *args, **options):
         backend_root = Path(__file__).resolve().parents[3]
         frontend_root = Path(options["frontend_root"]).resolve() if options["frontend_root"] else (backend_root.parent / "salymbekov-frontend").resolve()
         input_path = Path(options["input"]).resolve() if options["input"] else (backend_root / "cms_pages" / "imports" / "frontend-cms-snapshots.json").resolve()
         only_path = options["only_path"]
+        self.download_external_assets = options["download_external_assets"]
 
         if not input_path.exists():
             self.stderr.write(self.style.ERROR(f"Файл снимков не найден: {input_path}"))
@@ -132,6 +141,7 @@ class Command(BaseCommand):
 
             self._import_page(page, route, languages, frontend_root, snapshot_generated_at)
             imported += 1
+            self.stdout.write(self.style.SUCCESS(f"Imported {route_path}"))
 
         self.stdout.write(
             self.style.SUCCESS(
@@ -207,7 +217,7 @@ class Command(BaseCommand):
                 hero_assigned = True
 
             if is_external_url(normalized_url):
-                media.external_url = normalized_url
+                self._attach_remote_file(media, "file", normalized_url, fallback_external=True)
             else:
                 asset_path = resolve_frontend_asset(frontend_root, normalized_url)
                 if asset_path and asset_path.exists():
@@ -230,7 +240,7 @@ class Command(BaseCommand):
                 document.title_kg = text[:255]
 
                 if is_external_url(normalized_href):
-                    document.external_url = href
+                    self._attach_remote_file(document, "file", normalized_href, fallback_external=True)
                 else:
                     asset_path = resolve_frontend_asset(frontend_root, normalized_href)
                     if asset_path and asset_path.exists():
@@ -287,3 +297,25 @@ class Command(BaseCommand):
             "internal_notes",
             "updated_at",
         ])
+
+    def _attach_remote_file(self, instance, field_name, url, fallback_external=False):
+        if not self.download_external_assets:
+            if fallback_external:
+                instance.external_url = url
+            return
+
+        try:
+            with urlopen(url, timeout=30) as response:
+                content = response.read()
+        except Exception as exc:
+            self.stderr.write(self.style.WARNING(f"Не удалось скачать {url}: {exc}"))
+            if fallback_external:
+                instance.external_url = url
+            return
+
+        parsed = urlparse(url)
+        original_name = Path(parsed.path).name or "asset"
+        stem = Path(original_name).stem or "asset"
+        suffix = Path(original_name).suffix
+        filename = f"{slugify(stem) or 'asset'}{suffix}"
+        getattr(instance, field_name).save(filename, ContentFile(content), save=False)

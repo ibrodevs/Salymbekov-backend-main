@@ -3,6 +3,71 @@ import uuid
 from django_ckeditor_5.fields import CKEditor5Field
 
 
+class PageContent(models.Model):
+    """
+    Editable content for frontend pages/sections.
+    Put repeatable blocks, links, gallery items, video IDs, etc. into data.
+    """
+
+    slug = models.SlugField("Slug", max_length=160, unique=True)
+    path = models.CharField("Frontend path", max_length=255, unique=True, blank=True, null=True)
+
+    title_ru = models.CharField("Title (RU)", max_length=255, blank=True)
+    title_en = models.CharField("Title (EN)", max_length=255, blank=True)
+    title_kg = models.CharField("Title (KG)", max_length=255, blank=True)
+
+    subtitle_ru = models.TextField("Subtitle (RU)", blank=True)
+    subtitle_en = models.TextField("Subtitle (EN)", blank=True)
+    subtitle_kg = models.TextField("Subtitle (KG)", blank=True)
+
+    body_ru = CKEditor5Field("Body (RU)", blank=True, config_name="extends")
+    body_en = CKEditor5Field("Body (EN)", blank=True, config_name="extends")
+    body_kg = CKEditor5Field("Body (KG)", blank=True, config_name="extends")
+
+    data = models.JSONField("Structured data", default=dict, blank=True)
+    is_active = models.BooleanField("Active", default=True)
+
+    created_at = models.DateTimeField("Created", auto_now_add=True)
+    updated_at = models.DateTimeField("Updated", auto_now=True)
+
+    class Meta:
+        ordering = ["slug"]
+        verbose_name = "Page content"
+        verbose_name_plural = "Page contents"
+
+    def __str__(self):
+        return self.slug
+
+
+class PageMedia(models.Model):
+    IMAGE = "image"
+    VIDEO = "video"
+    FILE = "file"
+
+    MEDIA_TYPE_CHOICES = [
+        (IMAGE, "Image"),
+        (VIDEO, "Video"),
+        (FILE, "File"),
+    ]
+
+    page = models.ForeignKey(PageContent, related_name="media", on_delete=models.CASCADE)
+    key = models.SlugField("Key", max_length=120, blank=True)
+    title = models.CharField("Title", max_length=255, blank=True)
+    media_type = models.CharField("Type", max_length=20, choices=MEDIA_TYPE_CHOICES, default=IMAGE)
+    file = models.FileField("File", upload_to="pages/", blank=True, null=True)
+    external_url = models.URLField("External URL", blank=True)
+    order = models.PositiveIntegerField("Order", default=0)
+    is_active = models.BooleanField("Active", default=True)
+
+    class Meta:
+        ordering = ["order", "id"]
+        verbose_name = "Page media"
+        verbose_name_plural = "Page media"
+
+    def __str__(self):
+        return self.title or self.key or f"{self.page.slug} media"
+
+
 class DevelopmentCouncilMember(models.Model):
     """
     Член Совета по развитию

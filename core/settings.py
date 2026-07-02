@@ -31,7 +31,7 @@ SECRET_KEY = os.getenv(
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+DEBUG = os.getenv("DEBUG", "False" if os.getenv("DATABASE_URL") else "True").lower() == "true"
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 
 CSRF_TRUSTED_ORIGINS = [
@@ -68,7 +68,6 @@ INSTALLED_APPS = [
     'banners',
     'academic_council',
     'about',
-    "cms_pages",
 ]
 
 
@@ -113,6 +112,10 @@ CORS_ALLOWED_ORIGINS = [
     "https://localhost:3000",
     "https://127.0.0.1:3000",
     "https://salymbekov.vercel.app",
+]
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https?://(?:localhost|127\.0\.0\.1)(?::\d+)?$",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
@@ -240,16 +243,6 @@ AWS_S3_OBJECT_PARAMETERS = {
 }
 
 # Configure storage backends
-# By default use non-manifest static storage during development to avoid
-# requiring `collectstatic`/manifest entries. Set the environment variable
-# `STATICFILES_USE_MANIFEST=True` to force manifest-backed storage.
-USE_STATICFILES_MANIFEST = os.getenv("STATICFILES_USE_MANIFEST", "False").lower() == "true"
-STATICFILES_BACKEND = (
-    "whitenoise.storage.CompressedManifestStaticFilesStorage"
-    if USE_STATICFILES_MANIFEST
-    else "whitenoise.storage.CompressedStaticFilesStorage"
-)
-
 if AWS_ACCESS_KEY_ID and AWS_STORAGE_BUCKET_NAME:
     # Use S3 for media files
     STORAGES = {
@@ -257,7 +250,9 @@ if AWS_ACCESS_KEY_ID and AWS_STORAGE_BUCKET_NAME:
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         },
         "staticfiles": {
-            "BACKEND": STATICFILES_BACKEND,
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if DEBUG
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
@@ -268,7 +263,9 @@ else:
             "BACKEND": "django.core.files.storage.FileSystemStorage",
         },
         "staticfiles": {
-            "BACKEND": STATICFILES_BACKEND,
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if DEBUG
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
     MEDIA_URL = "/media/"

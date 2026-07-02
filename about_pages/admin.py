@@ -3,22 +3,7 @@ from django.contrib import admin
 from cms_pages.admin import BaseCmsPageAdmin
 
 from .models import AboutPage
-
-
-def about_section_from_path(path):
-    if path == "/about":
-        return "Главная страница раздела"
-    if path.startswith("/university/"):
-        return "Университет"
-    if path.startswith("/clinical/"):
-        return "Клиническая база"
-    if path.startswith("/infrastructure/"):
-        return "Инфраструктура"
-    if path.startswith("/cooperation/"):
-        return "Сотрудничество"
-    if path.startswith("/contact") or path.startswith("/contacts"):
-        return "Контакты"
-    return "Прочее"
+from .utils import about_section_from_path
 
 
 class AboutSectionFilter(admin.SimpleListFilter):

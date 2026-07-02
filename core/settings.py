@@ -71,6 +71,16 @@ INSTALLED_APPS = [
     "cms_pages",
     "about_pages",
     "program_pages",
+    "university_pages",
+    "clinical_pages",
+    "infrastructure_pages",
+    "cooperation_pages",
+    "contact_pages",
+    "mfm_pages",
+    "ait_pages",
+    "it_college_pages",
+    "postgrad_pages",
+    "center_pages",
 ]
 
 

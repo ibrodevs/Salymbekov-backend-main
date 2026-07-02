@@ -3,46 +3,7 @@ from django.contrib import admin
 from cms_pages.admin import BaseCmsPageAdmin
 
 from .models import ProgramPage
-
-
-def program_family_from_path(path):
-    if path.startswith("/education/mfm/"):
-        return "MFM"
-    if path == "/education/mfm":
-        return "MFM"
-    if path.startswith("/education/ait/"):
-        return "AIT"
-    if path == "/education/ait":
-        return "AIT"
-    if path.startswith("/education/it-college/"):
-        return "IT College"
-    if path == "/education/it-college":
-        return "IT College"
-    if path.startswith("/education/postgrad/"):
-        return "Postgraduate"
-    if path == "/education/postgrad":
-        return "Postgraduate"
-    if path.startswith("/education/center/"):
-        return "Center"
-    if path == "/education/center":
-        return "Center"
-    return "Other"
-
-
-def program_level_from_path(path):
-    if "/programs/" in path:
-        return "Программа"
-    if "/specialties/" in path:
-        return "Специальность"
-    if "/departments/" in path:
-        return "Подразделение"
-    if path.endswith("/about"):
-        return "О программе"
-    if path.endswith("/contacts"):
-        return "Контакты"
-    if path.endswith("/director") or path.endswith("/dean"):
-        return "Руководство"
-    return "Общая страница"
+from .utils import program_family_from_path, program_level_from_path
 
 
 class ProgramFamilyFilter(admin.SimpleListFilter):

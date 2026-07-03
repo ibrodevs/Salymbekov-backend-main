@@ -48,6 +48,8 @@ urlpatterns = [
     path("api/presscentre/", include("presscentre.urls")),
     path('api/academic-council/', include('academic_council.urls')),
     path('api/banners/', include('banners.urls')),
+    # Keep CMS routes before broader legacy "api/" includes to avoid accidental shadowing.
+    path('api/', include('cms_pages.urls')),
     path('api/', include('partners.urls')),
     path('api/', include('about.urls')),
 ]

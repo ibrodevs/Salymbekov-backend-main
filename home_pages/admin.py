@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.html import format_html
 
 from unfold.admin import ModelAdmin
 
@@ -143,20 +144,30 @@ class HomeGalleryPageAdmin(BaseCmsPageAdmin):
 
 @admin.register(HomeBanner)
 class HomeBannerAdmin(ModelAdmin):
-    list_display = ["id", "image"]
+    list_display = ["id", "preview", "image"]
     ordering = ["id"]
+    readonly_fields = ["preview"]
+    fields = ["preview", "image"]
 
     def get_queryset(self, request):
         return Banner.objects.all()
 
+    @admin.display(description="Превью")
+    def preview(self, obj):
+        if not obj.image:
+            return "Нет изображения"
+        return format_html('<img src="{}" style="max-height: 80px; border-radius: 12px;" />', obj.image.url)
+
 
 @admin.register(HomePartner)
 class HomePartnerAdmin(ModelAdmin):
-    list_display = ["id", "name_ru", "name_en", "name_kg"]
+    list_display = ["id", "logo_preview", "name_ru", "name_en", "name_kg"]
     list_display_links = ["id", "name_ru"]
     search_fields = ["name_ru", "name_en", "name_kg"]
     ordering = ["id"]
+    readonly_fields = ["logo_preview"]
     fields = [
+        "logo_preview",
         "logo",
         "name_ru", "name_en", "name_kg",
         "description_ru", "description_en", "description_kg",
@@ -165,3 +176,9 @@ class HomePartnerAdmin(ModelAdmin):
 
     def get_queryset(self, request):
         return Partner.objects.all()
+
+    @admin.display(description="Логотип")
+    def logo_preview(self, obj):
+        if not obj.logo:
+            return "Нет логотипа"
+        return format_html('<img src="{}" style="max-height: 80px; max-width: 160px; object-fit: contain;" />', obj.logo.url)

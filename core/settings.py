@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     'academic_council',
     'about',
     "cms_pages",
+    "home_pages",
     "about_pages",
     "program_pages",
     "university_pages",

@@ -23,11 +23,12 @@ class NewsAdmin(ModelAdmin):
         "get_title_ru",
         "category",
         "is_recommended",
+        "external_id",
         "published_at",
         "created_at",
     ]
     list_filter = ["is_recommended", "category", "published_at"]
-    search_fields = ["title_ru", "title_en", "title_kg"]
+    search_fields = ["title_ru", "title_en", "title_kg", "external_id", "source_url"]
     date_hierarchy = "published_at"
     inlines = [NewsImageInline]
 

@@ -59,6 +59,20 @@ class News(models.Model):
         help_text="Отображать в разделе рекомендованных новостей",
     )
 
+    external_id = models.CharField(
+        max_length=64,
+        blank=True,
+        db_index=True,
+        verbose_name="Внешний ID",
+        help_text="ID новости в старом WordPress сайте",
+    )
+    source_url = models.URLField(
+        max_length=500,
+        blank=True,
+        verbose_name="Источник",
+        help_text="Ссылка на оригинальную новость",
+    )
+
     title_en = models.CharField(max_length=255, verbose_name="Заголовок (EN)")
     title_ru = models.CharField(max_length=255, verbose_name="Заголовок (RU)")
     title_kg = models.CharField(max_length=255, verbose_name="Заголовок (KG)")
@@ -107,6 +121,7 @@ class News(models.Model):
                 fields=["is_recommended", "-created_at"], name="news_recommended_idx"
             ),
             models.Index(fields=["category", "-created_at"], name="news_category_idx"),
+            models.Index(fields=["external_id"], name="news_external_id_idx"),
         ]
 
     def __str__(self):

@@ -7,7 +7,7 @@ from html import unescape
 from html.parser import HTMLParser
 from pathlib import PurePosixPath
 from urllib.error import HTTPError, URLError
-from urllib.parse import urljoin, urlparse
+from urllib.parse import quote, urljoin, urlparse, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 from django.core.files.base import ContentFile
@@ -89,7 +89,7 @@ def fetch_json(url):
 
 
 def fetch_bytes(url):
-    request = Request(url, headers={"User-Agent": USER_AGENT, "Accept": "*/*"})
+    request = Request(encode_url(url), headers={"User-Agent": USER_AGENT, "Accept": "*/*"})
     with urlopen(request, timeout=REQUEST_TIMEOUT) as response:
         content_type = response.headers.get("content-type", "").split(";")[0]
         return response.read(), content_type
@@ -119,6 +119,19 @@ def absolute_url(url):
     if not cleaned_url or re.search(r"[\s\x00-\x1f\x7f]", cleaned_url):
         return ""
     return urljoin(SOURCE_URL, cleaned_url)
+
+
+def encode_url(url):
+    parts = urlsplit(url)
+    return urlunsplit(
+        (
+            parts.scheme,
+            parts.netloc,
+            quote(parts.path, safe="/%"),
+            quote(parts.query, safe="=&?/:;+,%"),
+            parts.fragment,
+        )
+    )
 
 
 def is_media_url(url):

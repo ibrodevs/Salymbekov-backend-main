@@ -1,6 +1,7 @@
 import mimetypes
 import re
 import time
+from http.client import InvalidURL
 from datetime import datetime
 from html import unescape
 from html.parser import HTMLParser
@@ -22,6 +23,7 @@ SOURCE_URL = "https://salymbekov.com/en/latest-news/"
 POSTS_URL = "https://salymbekov.com/wp-json/wp/v2/posts"
 REQUEST_TIMEOUT = 30
 USER_AGENT = "salymbekov-news-importer/1.0"
+MEDIA_EXTENSIONS = {".avif", ".gif", ".jpeg", ".jpg", ".png", ".webp"}
 
 
 class ContentParser(HTMLParser):
@@ -113,7 +115,18 @@ def truncate(value, max_length):
 def absolute_url(url):
     if not url:
         return ""
-    return urljoin(SOURCE_URL, unescape(str(url)).strip())
+    cleaned_url = unescape(str(url)).strip()
+    if not cleaned_url or re.search(r"[\s\x00-\x1f\x7f]", cleaned_url):
+        return ""
+    return urljoin(SOURCE_URL, cleaned_url)
+
+
+def is_media_url(url):
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return False
+    suffix = PurePosixPath(parsed.path).suffix.lower()
+    return suffix in MEDIA_EXTENSIONS or "/wp-content/uploads/" in parsed.path
 
 
 def unique_urls(urls):
@@ -123,6 +136,8 @@ def unique_urls(urls):
     for url in urls:
         absolute = absolute_url(url)
         if not absolute or absolute in seen:
+            continue
+        if not is_media_url(absolute):
             continue
         if "blank.gif" in absolute or "loading.gif" in absolute:
             continue
@@ -324,7 +339,11 @@ class Command(BaseCommand):
             time.sleep(0.05)
 
     def download_into_field(self, image_field, url, prefix):
-        payload, content_type = fetch_bytes(url)
+        try:
+            payload, content_type = fetch_bytes(url)
+        except (HTTPError, InvalidURL, URLError, ValueError) as error:
+            self.stderr.write(self.style.WARNING(f"Skipped media {url}: {error}"))
+            return
         filename = get_filename(url, prefix)
         if "." not in filename:
             filename += mimetypes.guess_extension(content_type) or ".jpg"

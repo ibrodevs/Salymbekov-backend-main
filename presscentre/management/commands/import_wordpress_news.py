@@ -174,8 +174,27 @@ def is_media_url(url):
     return suffix in MEDIA_EXTENSIONS or "/wp-content/uploads/" in parsed.path
 
 
+def canonical_media_url(url):
+    parsed = urlparse(url)
+    path = re.sub(
+        r"-(?:\d{2,5}x\d{2,5}|scaled)(?=\.[a-zA-Z0-9]+$)",
+        "",
+        parsed.path,
+    )
+    return f"{parsed.netloc.lower()}{path.lower()}"
+
+
+def is_resized_media_url(url):
+    return bool(
+        re.search(
+            r"-(?:\d{2,5}x\d{2,5}|scaled)(?=\.[a-zA-Z0-9]+(?:$|\?))",
+            urlparse(url).path,
+        )
+    )
+
+
 def unique_urls(urls):
-    seen = set()
+    seen = {}
     result = []
 
     for url in urls:
@@ -186,7 +205,13 @@ def unique_urls(urls):
             continue
         if "blank.gif" in absolute or "loading.gif" in absolute:
             continue
-        seen.add(absolute)
+        canonical = canonical_media_url(absolute)
+        existing_index = seen.get(canonical)
+        if existing_index is not None:
+            if is_resized_media_url(result[existing_index]) and not is_resized_media_url(absolute):
+                result[existing_index] = absolute
+            continue
+        seen[canonical] = len(result)
         result.append(absolute)
 
     return result

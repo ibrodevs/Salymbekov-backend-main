@@ -5,13 +5,21 @@ from .models import Category, News, NewsImage
 class LocalizationSerializerMixin:
     """Миксин для локализации сериализаторов"""
 
+    def _normalize_language(self, lang):
+        language = str(lang or "ru").lower().split("-")[0]
+        if language == "ky":
+            return "kg"
+        if language in {"ru", "en", "kg"}:
+            return language
+        return "ru"
+
     def _get_language(self):
         lang = self.context.get("language")
         if lang:
-            return lang
+            return self._normalize_language(lang)
         request = self.context.get("request")
         if request:
-            return (
+            return self._normalize_language(
                 request.GET.get("lang")
                 or getattr(request, "LANGUAGE_CODE", None)
                 or "ru"

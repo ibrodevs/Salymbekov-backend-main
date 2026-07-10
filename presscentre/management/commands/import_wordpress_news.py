@@ -20,7 +20,13 @@ from presscentre.models import Category, News, NewsImage
 
 
 SOURCE_URL = "https://salymbekov.com/en/latest-news/"
-POSTS_URL = "https://salymbekov.com/wp-json/wp/v2/posts"
+POSTS_URLS = {
+    "ru": "https://salymbekov.com/ru/wp-json/wp/v2/posts",
+    "en": "https://salymbekov.com/en/wp-json/wp/v2/posts",
+    "kg": "https://salymbekov.com/kg/wp-json/wp/v2/posts",
+}
+PRIMARY_LANGUAGE = "ru"
+LANGUAGES = ("ru", "en", "kg")
 REQUEST_TIMEOUT = 30
 USER_AGENT = "salymbekov-news-importer/1.0"
 MEDIA_EXTENSIONS = {".avif", ".gif", ".jpeg", ".jpg", ".png", ".webp"}
@@ -235,27 +241,24 @@ class Command(BaseCommand):
         page = 1
 
         while True:
-            url = f"{POSTS_URL}?per_page={page_size}&page={page}&_embed=1"
-            try:
-                response, raw_payload = fetch_json(url)
-            except HTTPError as error:
-                if error.code == 400 and page > 1:
-                    break
-                raise CommandError(f"WordPress request failed: {error}") from error
-            except URLError as error:
-                raise CommandError(f"WordPress request failed: {error}") from error
+            posts_by_language, total_pages = self.fetch_posts_page(page, page_size)
+            primary_posts = list(posts_by_language[PRIMARY_LANGUAGE].values())
 
-            posts = parse_json_payload(raw_payload)
-            if not posts:
+            if not primary_posts:
                 break
 
-            for post in posts:
+            for post in primary_posts:
                 if limit is not None and imported >= limit:
                     self._summary(created, updated, imported, dry_run)
                     return
 
+                translations = {
+                    language: posts_by_language.get(language, {}).get(str(post["id"]))
+                    for language in LANGUAGES
+                }
                 was_created = self.import_post(
-                    post,
+                    post=post,
+                    translations=translations,
                     dry_run=dry_run,
                     skip_media=skip_media,
                     clear_gallery=clear_gallery,
@@ -265,40 +268,73 @@ class Command(BaseCommand):
                     created += 1 if was_created else 0
                     updated += 0 if was_created else 1
 
-            total_pages = int(response.headers.get("x-wp-totalpages", page))
             if page >= total_pages:
                 break
             page += 1
 
         self._summary(created, updated, imported, dry_run)
 
-    def import_post(self, post, *, dry_run, skip_media, clear_gallery):
+    def fetch_posts_page(self, page, page_size):
+        posts_by_language = {}
+        total_pages = page
+
+        for language, posts_url in POSTS_URLS.items():
+            url = f"{posts_url}?per_page={page_size}&page={page}&_embed=1"
+            try:
+                response, raw_payload = fetch_json(url)
+            except HTTPError as error:
+                if error.code == 400 and page > 1:
+                    posts_by_language[language] = {}
+                    continue
+                raise CommandError(f"WordPress {language} request failed: {error}") from error
+            except URLError as error:
+                raise CommandError(f"WordPress {language} request failed: {error}") from error
+
+            posts = parse_json_payload(raw_payload)
+            posts_by_language[language] = {str(post["id"]): post for post in posts}
+
+            if language == PRIMARY_LANGUAGE:
+                total_pages = int(response.headers.get("x-wp-totalpages", page))
+
+        return posts_by_language, total_pages
+
+    def import_post(self, *, post, translations, dry_run, skip_media, clear_gallery):
         external_id = str(post["id"])
-        title = truncate(strip_html(post.get("title", {}).get("rendered", "")) or f"News {external_id}", 255)
-        excerpt = strip_html(post.get("excerpt", {}).get("rendered", ""))
-        description, content_images = extract_content(post.get("content", {}).get("rendered", ""))
+        localized = self.get_localized_content(external_id, translations)
+        primary_content = localized[PRIMARY_LANGUAGE]
         featured_image = absolute_url(get_featured_image(post))
         source_url = post.get("link", "")
-        category_name = truncate(get_category_name(post), 255)
         created_at, published_at = parse_date(post.get("date"))
 
         if dry_run:
-            self.stdout.write(f"[dry-run] {external_id}: {title}")
+            self.stdout.write(
+                "[dry-run] {external_id}: RU={ru} | EN={en} | KG={kg}".format(
+                    external_id=external_id,
+                    ru=localized["ru"]["title"],
+                    en=localized["en"]["title"],
+                    kg=localized["kg"]["title"],
+                )
+            )
             return False
 
-        category = self.get_or_create_category(category_name)
+        category = self.get_or_create_category(
+            {
+                language: content["category"]
+                for language, content in localized.items()
+            }
+        )
         defaults = {
             "category": category,
             "source_url": truncate(source_url, 500),
-            "title_en": title,
-            "title_ru": title,
-            "title_kg": title,
-            "short_description_en": excerpt,
-            "short_description_ru": excerpt,
-            "short_description_kg": excerpt,
-            "description_en": description,
-            "description_ru": description,
-            "description_kg": description,
+            "title_en": localized["en"]["title"],
+            "title_ru": localized["ru"]["title"],
+            "title_kg": localized["kg"]["title"],
+            "short_description_en": localized["en"]["excerpt"],
+            "short_description_ru": localized["ru"]["excerpt"],
+            "short_description_kg": localized["kg"]["excerpt"],
+            "description_en": localized["en"]["description"],
+            "description_ru": localized["ru"]["description"],
+            "description_kg": localized["kg"]["description"],
             "published_at": published_at,
         }
 
@@ -312,26 +348,77 @@ class Command(BaseCommand):
                 News.objects.filter(pk=news.pk).update(created_at=created_at)
 
             if not skip_media:
-                self.save_media(news, featured_image, content_images, clear_gallery=clear_gallery)
+                self.save_media(
+                    news,
+                    featured_image,
+                    primary_content["content_images"],
+                    clear_gallery=clear_gallery,
+                )
 
         status = "created" if created else "updated"
-        self.stdout.write(f"{status}: {external_id} {title}")
+        self.stdout.write(f"{status}: {external_id} {primary_content['title']}")
         return created
 
-    def get_or_create_category(self, title):
-        normalized_title = title or "News"
+    def get_localized_content(self, external_id, translations):
+        fallback_post = translations.get(PRIMARY_LANGUAGE) or next(
+            (post for post in translations.values() if post),
+            {},
+        )
+        fallback = self.parse_post_content(fallback_post, external_id)
+        localized = {}
+
+        for language in LANGUAGES:
+            localized[language] = self.parse_post_content(
+                translations.get(language) or fallback_post,
+                external_id,
+                fallback=fallback,
+            )
+
+        return localized
+
+    def parse_post_content(self, post, external_id, fallback=None):
+        fallback = fallback or {}
+        title = strip_html(post.get("title", {}).get("rendered", "")) if post else ""
+        excerpt = strip_html(post.get("excerpt", {}).get("rendered", "")) if post else ""
+        description, content_images = extract_content(
+            post.get("content", {}).get("rendered", "") if post else ""
+        )
+        category = get_category_name(post) if post else ""
+
+        return {
+            "title": truncate(title or fallback.get("title") or f"News {external_id}", 255),
+            "excerpt": excerpt or fallback.get("excerpt", ""),
+            "description": description or fallback.get("description", ""),
+            "category": truncate(category or fallback.get("category") or "News", 255),
+            "content_images": content_images or fallback.get("content_images", []),
+        }
+
+    def get_or_create_category(self, titles):
+        normalized_titles = {
+            language: truncate(titles.get(language) or titles.get(PRIMARY_LANGUAGE) or "News", 255)
+            for language in LANGUAGES
+        }
         category = (
-            Category.objects.filter(title_en=normalized_title).first()
-            or Category.objects.filter(title_ru=normalized_title).first()
-            or Category.objects.filter(title_kg=normalized_title).first()
+            Category.objects.filter(title_ru=normalized_titles["ru"]).first()
+            or Category.objects.filter(title_en=normalized_titles["en"]).first()
+            or Category.objects.filter(title_kg=normalized_titles["kg"]).first()
         )
         if category:
+            changed_fields = []
+            for language in LANGUAGES:
+                field = f"title_{language}"
+                value = normalized_titles[language]
+                if getattr(category, field) != value:
+                    setattr(category, field, value)
+                    changed_fields.append(field)
+            if changed_fields:
+                category.save(update_fields=changed_fields)
             return category
 
         return Category.objects.create(
-            title_en=normalized_title,
-            title_ru=normalized_title,
-            title_kg=normalized_title,
+            title_en=normalized_titles["en"],
+            title_ru=normalized_titles["ru"],
+            title_kg=normalized_titles["kg"],
         )
 
     def save_media(self, news, featured_image, content_images, *, clear_gallery):

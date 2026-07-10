@@ -30,6 +30,20 @@ LANGUAGES = ("ru", "en", "kg")
 REQUEST_TIMEOUT = 30
 USER_AGENT = "salymbekov-news-importer/1.0"
 MEDIA_EXTENSIONS = {".avif", ".gif", ".jpeg", ".jpg", ".png", ".webp"}
+EXCERPT_LENGTH = 320
+CATEGORY_TRANSLATIONS = {
+    "Без категории": {"en": "Uncategorized", "kg": "Категориясыз"},
+    "Визит": {"en": "Visit", "kg": "Иш сапар"},
+    "Конференции": {"en": "Conferences", "kg": "Конференциялар"},
+    "Лекция": {"en": "Lecture", "kg": "Лекция"},
+    "Мастер-классы": {"en": "Master Classes", "kg": "Мастер-класстар"},
+    "Меморандум": {"en": "Memorandum", "kg": "Меморандум"},
+    "Мероприятие": {"en": "Event", "kg": "Иш-чара"},
+    "Новости": {"en": "News", "kg": "Жаңылыктар"},
+    "Профориентация": {"en": "Career Guidance", "kg": "Кесиптик багыт берүү"},
+    "Семинар": {"en": "Seminar", "kg": "Семинар"},
+    "Форум": {"en": "Forum", "kg": "Форум"},
+}
 
 
 class ContentParser(HTMLParser):
@@ -116,6 +130,18 @@ def strip_html(html):
 def truncate(value, max_length):
     value = value or ""
     return value[:max_length]
+
+
+def make_excerpt(description):
+    text = re.sub(r"\s+", " ", description or "").strip()
+    return truncate(text, EXCERPT_LENGTH)
+
+
+def translate_category_title(title, language):
+    cleaned_title = strip_html(title or "").strip()
+    if language == PRIMARY_LANGUAGE:
+        return cleaned_title
+    return CATEGORY_TRANSLATIONS.get(cleaned_title, {}).get(language, cleaned_title)
 
 
 def absolute_url(url):
@@ -379,11 +405,11 @@ class Command(BaseCommand):
     def parse_post_content(self, post, external_id, fallback=None):
         fallback = fallback or {}
         title = strip_html(post.get("title", {}).get("rendered", "")) if post else ""
-        excerpt = strip_html(post.get("excerpt", {}).get("rendered", "")) if post else ""
         description, content_images = extract_content(
             post.get("content", {}).get("rendered", "") if post else ""
         )
         category = get_category_name(post) if post else ""
+        excerpt = make_excerpt(description)
 
         return {
             "title": truncate(title or fallback.get("title") or f"News {external_id}", 255),
@@ -394,8 +420,14 @@ class Command(BaseCommand):
         }
 
     def get_or_create_category(self, titles):
+        primary_title = titles.get(PRIMARY_LANGUAGE) or "News"
         normalized_titles = {
-            language: truncate(titles.get(language) or titles.get(PRIMARY_LANGUAGE) or "News", 255)
+            language: truncate(
+                translate_category_title(titles.get(language) or primary_title, language)
+                or translate_category_title(primary_title, language)
+                or primary_title,
+                255,
+            )
             for language in LANGUAGES
         }
         category = (

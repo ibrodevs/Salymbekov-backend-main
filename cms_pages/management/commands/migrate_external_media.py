@@ -39,7 +39,7 @@ def safe_filename(url):
 
 class Command(BaseCommand):
     help = (
-        "Finds old salymbekov.com WordPress uploads used by CMS pages. "
+        "Finds old salymbekov.com WordPress uploads used by CMS pages and sections. "
         "With --apply downloads them into Django storage (S3/Bucketeer in production) "
         "and rewrites CMS HTML/JSON/links to the new storage URLs."
     )
@@ -68,7 +68,7 @@ class Command(BaseCommand):
         self.timeout = options["timeout"]
         only_paths = set(options["only_path"] or [])
 
-        queryset = Page.objects.all().prefetch_related("media_items", "documents", "links")
+        queryset = Page.objects.all().prefetch_related("sections", "media_items", "documents", "links")
         if only_paths:
             queryset = queryset.filter(path__in=only_paths)
 
@@ -78,10 +78,6 @@ class Command(BaseCommand):
         failed = 0
         unresolved = []
 
-        # Do not use QuerySet.iterator() here: the command intentionally relies on
-        # prefetched media/documents/links and Django requires a chunk_size when
-        # combining iterator() with prefetch_related(). The CMS page count is small
-        # enough to evaluate this queryset normally.
         for page in queryset:
             refs = self._collect_page_refs(page)
             if not refs:
@@ -135,6 +131,10 @@ class Command(BaseCommand):
 
         for field_name in ("body_ru", "body_en", "body_kg"):
             refs.update(collect_urls(getattr(page, field_name, "")))
+
+        for section in page.sections.all():
+            for field_name in ("body_ru", "body_en", "body_kg"):
+                refs.update(collect_urls(getattr(section, field_name, "")))
 
         try:
             refs.update(collect_urls(json.dumps(page.data or {}, ensure_ascii=False)))
@@ -197,11 +197,7 @@ class Command(BaseCommand):
 
         if suffix in IMAGE_EXTENSIONS:
             next_order = (page.media_items.aggregate(max_order=Max("order"))["max_order"] or 0) + 1
-            target = PageMedia(
-                page=page,
-                media_type=PageMedia.TYPE_IMAGE,
-                order=next_order,
-            )
+            target = PageMedia(page=page, media_type=PageMedia.TYPE_IMAGE, order=next_order)
             target.file.save(filename, ContentFile(content), save=False)
             target.save()
             return target.resolved_url
@@ -212,23 +208,26 @@ class Command(BaseCommand):
         target.save()
         return target.resolved_url
 
+    @staticmethod
+    def _replace_urls(value, replacements):
+        updated = value or ""
+        for old_url, new_url in replacements.items():
+            updated = updated.replace(old_url, new_url)
+        return updated
+
     def _rewrite_page(self, page, replacements):
         update_fields = []
 
         for field_name in ("body_ru", "body_en", "body_kg"):
             value = getattr(page, field_name, "") or ""
-            updated = value
-            for old_url, new_url in replacements.items():
-                updated = updated.replace(old_url, new_url)
+            updated = self._replace_urls(value, replacements)
             if updated != value:
                 setattr(page, field_name, updated)
                 update_fields.append(field_name)
 
         try:
             serialized = json.dumps(page.data or {}, ensure_ascii=False)
-            updated_serialized = serialized
-            for old_url, new_url in replacements.items():
-                updated_serialized = updated_serialized.replace(old_url, new_url)
+            updated_serialized = self._replace_urls(serialized, replacements)
             if updated_serialized != serialized:
                 page.data = json.loads(updated_serialized)
                 update_fields.append("data")
@@ -237,6 +236,17 @@ class Command(BaseCommand):
 
         if update_fields:
             page.save(update_fields=[*update_fields, "updated_at"])
+
+        for section in page.sections.all():
+            section_update_fields = []
+            for field_name in ("body_ru", "body_en", "body_kg"):
+                value = getattr(section, field_name, "") or ""
+                updated = self._replace_urls(value, replacements)
+                if updated != value:
+                    setattr(section, field_name, updated)
+                    section_update_fields.append(field_name)
+            if section_update_fields:
+                section.save(update_fields=[*section_update_fields, "updated_at"])
 
         for link in page.links.all():
             new_url = replacements.get(link.url)

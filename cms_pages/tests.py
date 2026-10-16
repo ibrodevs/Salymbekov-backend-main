@@ -1,6 +1,7 @@
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
+from .management.commands.bootstrap_site_pages import collect_cms_routes
 from .models import Page, PageDocument, PageLink, PageMedia, PageSection, normalize_path
 
 
@@ -33,3 +34,18 @@ class CmsPagesTestCase(TestCase):
         self.assertEqual(payload["data"]["documents"][0]["title"], "Файл")
         self.assertEqual(payload["data"]["links"][0]["title"], "Ссылка")
 
+
+class BootstrapRouteParsingTests(SimpleTestCase):
+    def test_collects_managed_cms_only_and_home_routes(self):
+        source = """
+        <Route path="/" element={<HomeCmsPage isSplashVisible={false} />} />
+        <Route path="/about" element={cmsOnlyPage('/about')} />
+        <Route path="/legacy" element={managedPage('/legacy', <LegacyPage />)} />
+        """
+        routes = {route["path"]: route for route in collect_cms_routes(source)}
+
+        self.assertEqual(set(routes), {"/", "/about", "/legacy"})
+        self.assertEqual(routes["/"]["mode"], "cms-only")
+        self.assertEqual(routes["/about"]["mode"], "cms-only")
+        self.assertEqual(routes["/legacy"]["mode"], "managed")
+        self.assertEqual(routes["/legacy"]["component"], "LegacyPage")

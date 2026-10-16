@@ -1,9 +1,10 @@
-from django.shortcuts import render
 from rest_framework import generics
-from .serializers import BannerSerializer
+
 from .models import Banner
-# Create your views here.
+from .serializers import BannerSerializer
+
 
 class BannerView(generics.ListAPIView):
-    queryset = Banner.objects.all()
+    queryset = Banner.objects.all().order_by("id")
     serializer_class = BannerSerializer
+    pagination_class = None

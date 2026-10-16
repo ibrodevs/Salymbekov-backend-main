@@ -33,7 +33,7 @@ def api_root(request):
             "news": "/api/presscentre/news/",
             "pages": "/api/pages/",
             "page_by_path": "/api/pages/by-path/?path=/about",
-            "page_content": "/api/pages/<slug>/",
+            "footer": "/api/site/footer/",
         },
     })
 
@@ -48,6 +48,7 @@ urlpatterns = [
     path("api/presscentre/", include("presscentre.urls")),
     path('api/academic-council/', include('academic_council.urls')),
     path('api/banners/', include('banners.urls')),
+    path('api/site/', include('contact_pages.urls')),
     # Keep CMS routes before broader legacy "api/" includes to avoid accidental shadowing.
     path('api/', include('cms_pages.urls')),
     path('api/', include('partners.urls')),

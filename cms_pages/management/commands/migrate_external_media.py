@@ -78,7 +78,11 @@ class Command(BaseCommand):
         failed = 0
         unresolved = []
 
-        for page in queryset.iterator():
+        # Do not use QuerySet.iterator() here: the command intentionally relies on
+        # prefetched media/documents/links and Django requires a chunk_size when
+        # combining iterator() with prefetch_related(). The CMS page count is small
+        # enough to evaluate this queryset normally.
+        for page in queryset:
             refs = self._collect_page_refs(page)
             if not refs:
                 continue

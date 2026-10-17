@@ -31,12 +31,14 @@ def collect_urls(value):
     return {item.rstrip(".,;:)]}") for item in URL_RE.findall(str(value))}
 
 
-def is_legacy_url(url):
+def is_legacy_asset_url(url):
     try:
-        host = (urlparse(url).hostname or "").lower()
+        parsed = urlparse(url)
+        host = (parsed.hostname or "").lower()
+        path = parsed.path.lower()
     except ValueError:
         return False
-    return host in LEGACY_HOSTS
+    return host in LEGACY_HOSTS and path.startswith("/wp-content/")
 
 
 def looks_like_translation_key(value):
@@ -47,7 +49,7 @@ def looks_like_translation_key(value):
 class Command(BaseCommand):
     help = (
         "Audits the CMS routes that already exist in the new site. Reports missing languages, "
-        "known placeholder text, unresolved translation keys, old salymbekov.com assets and "
+        "known placeholder text, unresolved translation keys, old WordPress assets and "
         "other external media/document references."
     )
 
@@ -82,7 +84,7 @@ class Command(BaseCommand):
 
                 for url in collect_urls(combined):
                     external_urls.add(url)
-                    if is_legacy_url(url):
+                    if is_legacy_asset_url(url):
                         legacy_urls.add(url)
 
             try:
@@ -94,7 +96,7 @@ class Command(BaseCommand):
                     problems.append(f"placeholder:{marker}")
             for url in collect_urls(serialized_data):
                 external_urls.add(url)
-                if is_legacy_url(url):
+                if is_legacy_asset_url(url):
                     legacy_urls.add(url)
 
             for section in page.sections.all():
@@ -102,7 +104,7 @@ class Command(BaseCommand):
                     body = getattr(section, f"body_{lang}", "") or ""
                     for url in collect_urls(body):
                         external_urls.add(url)
-                        if is_legacy_url(url):
+                        if is_legacy_asset_url(url):
                             legacy_urls.add(url)
 
             media_external = [item.external_url for item in page.media_items.all() if item.external_url]
@@ -111,11 +113,11 @@ class Command(BaseCommand):
 
             for url in [*media_external, *docs_external, *links_external]:
                 external_urls.add(url)
-                if is_legacy_url(url):
+                if is_legacy_asset_url(url):
                     legacy_urls.add(url)
 
             if legacy_urls:
-                problems.append(f"legacy_external_assets:{len(legacy_urls)}")
+                problems.append(f"legacy_wordpress_assets:{len(legacy_urls)}")
             if media_external:
                 problems.append(f"external_media_records:{len(media_external)}")
             if docs_external:

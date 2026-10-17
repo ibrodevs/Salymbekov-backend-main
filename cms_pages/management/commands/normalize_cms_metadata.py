@@ -1,3 +1,5 @@
+import json
+
 from django.core.management.base import BaseCommand
 
 from cms_pages.models import Page
@@ -26,6 +28,12 @@ PAGE_TITLES = {
     },
 }
 
+CONFERENCE_COPY = {
+    "ru": "Научные конференции и семинары",
+    "en": "Scientific conferences and seminars",
+    "kg": "Илимий конференциялар жана семинарлар",
+}
+
 BAD_VALUES = {
     "Положительно для малейшего ухода",
 }
@@ -33,8 +41,8 @@ BAD_VALUES = {
 
 class Command(BaseCommand):
     help = (
-        "Fills known missing CMS page titles in RU/EN/KG and removes a known "
-        "snapshot placeholder. Existing meaningful administrator content is preserved."
+        "Fills known missing CMS metadata in RU/EN/KG and removes known snapshot "
+        "placeholders. Existing meaningful administrator content is preserved."
     )
 
     def handle(self, *args, **options):
@@ -48,23 +56,38 @@ class Command(BaseCommand):
 
             update_fields = []
             for lang in ("ru", "en", "kg"):
-                field_name = f"title_{lang}"
-                current = (getattr(page, field_name, "") or "").strip()
-                if not current or current in BAD_VALUES:
-                    setattr(page, field_name, titles[lang])
-                    update_fields.append(field_name)
+                title_field = f"title_{lang}"
+                current_title = (getattr(page, title_field, "") or "").strip()
+                if not current_title or current_title in BAD_VALUES:
+                    setattr(page, title_field, titles[lang])
+                    update_fields.append(title_field)
 
-            # A bad machine-generated snapshot phrase must never be shown as body copy.
-            for lang in ("ru", "en", "kg"):
-                field_name = f"body_{lang}"
-                current = (getattr(page, field_name, "") or "").strip()
-                if current in BAD_VALUES:
-                    setattr(page, field_name, "")
-                    update_fields.append(field_name)
+                for field_prefix in ("subtitle", "body"):
+                    field_name = f"{field_prefix}_{lang}"
+                    current = (getattr(page, field_name, "") or "").strip()
+                    if current in BAD_VALUES:
+                        setattr(page, field_name, "")
+                        update_fields.append(field_name)
+
+            if path == "/science/events/conferences":
+                for lang in ("ru", "en", "kg"):
+                    body_field = f"body_{lang}"
+                    if not (getattr(page, body_field, "") or "").strip():
+                        setattr(page, body_field, CONFERENCE_COPY[lang])
+                        update_fields.append(body_field)
+
+            # The imported snapshot can also contain the bad phrase in JSON data.
+            serialized = json.dumps(page.data or {}, ensure_ascii=False)
+            updated_serialized = serialized
+            for bad_value in BAD_VALUES:
+                updated_serialized = updated_serialized.replace(bad_value, "")
+            if updated_serialized != serialized:
+                page.data = json.loads(updated_serialized)
+                update_fields.append("data")
 
             if update_fields:
-                page.save(update_fields=[*update_fields, "updated_at"])
+                page.save(update_fields=[*dict.fromkeys(update_fields), "updated_at"])
                 changed_pages += 1
-                self.stdout.write(f"Updated metadata: {path} ({', '.join(update_fields)})")
+                self.stdout.write(f"Updated metadata: {path} ({', '.join(dict.fromkeys(update_fields))})")
 
         self.stdout.write(self.style.SUCCESS(f"CMS metadata normalization complete: changed={changed_pages}."))

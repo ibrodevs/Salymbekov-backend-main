@@ -48,6 +48,7 @@ class BaseCmsPageAdmin(ModelAdmin):
         "navigation_group",
         "template",
         "content_ready",
+        "content_status_label",
         "is_published",
         "force_backend_render",
         "updated_at",
@@ -118,6 +119,16 @@ class BaseCmsPageAdmin(ModelAdmin):
     @admin.display(boolean=True, description="Контент готов")
     def content_ready(self, obj):
         return obj.has_meaningful_content
+
+    @admin.display(description="Статус проверки")
+    def content_status_label(self, obj):
+        data = obj.data or {}
+        status = data.get("content_status")
+        if status:
+            return status
+        if data.get("verified_legacy_source") or data.get("verified_source_urls"):
+            return "verified-source"
+        return "—"
 
 
 @admin.register(Page)

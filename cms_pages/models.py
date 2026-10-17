@@ -264,7 +264,11 @@ class PageDocument(OrderedPageItem):
 
 class PageLink(OrderedPageItem):
     page = models.ForeignKey(Page, on_delete=models.CASCADE, related_name="links")
-    url = models.URLField("Ссылка")
+    url = models.CharField(
+        "Ссылка",
+        max_length=500,
+        help_text="Можно указать внешний URL (https://...) или внутренний путь сайта (/education/...).",
+    )
     external = models.BooleanField("Открывать в новой вкладке", default=True)
 
     title_ru = models.CharField("Название (рус)", max_length=255, blank=True)

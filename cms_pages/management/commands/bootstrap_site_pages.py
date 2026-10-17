@@ -4,6 +4,7 @@ from pathlib import Path
 from django.core.management.base import BaseCommand
 
 from cms_pages.models import Page
+from cms_pages.site_routes import CMS_PAGE_PATHS, humanize_path, navigation_group_for
 
 
 MANAGED_ROUTE_PATTERN = re.compile(
@@ -18,17 +19,6 @@ HOME_CMS_ROUTE_PATTERN = re.compile(
     r"<Route\s+path=(['\"])(/)\1\s+element=\{<HomeCmsPage\b",
     re.MULTILINE,
 )
-
-
-def humanize_path(path_value):
-    if path_value == "/":
-        return "Главная"
-
-    parts = [part for part in path_value.strip("/").split("/") if part]
-    if not parts:
-        return "Страница"
-
-    return " / ".join(part.replace("-", " ").replace("_", " ").title() for part in parts)
 
 
 def collect_cms_routes(source):
@@ -58,22 +48,39 @@ def collect_cms_routes(source):
             "mode": "cms-only",
         }
 
+    return routes
+
+
+def merge_canonical_routes(discovered=None):
+    routes = dict(discovered or {})
+    for path_value in CMS_PAGE_PATHS:
+        routes.setdefault(
+            path_value,
+            {
+                "path": path_value,
+                "component": "HomeCmsPage" if path_value == "/" else None,
+                "mode": "cms-only",
+            },
+        )
     return list(routes.values())
 
 
 class Command(BaseCommand):
-    help = "Создает CMS-страницы по маршрутам, подключенным через managedPage/cmsOnlyPage во frontend."
+    help = "Создает отсутствующие CMS-страницы для публичных маршрутов сайта."
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--frontend-app",
             default=None,
-            help="Путь до frontend src/App.jsx. По умолчанию используется соседний проект salymbekov-frontend/src/App.jsx.",
+            help=(
+                "Необязательный путь до frontend src/App.jsx. Если файл недоступен, "
+                "используется встроенный backend-реестр CMS-маршрутов."
+            ),
         )
         parser.add_argument(
             "--overwrite-metadata",
             action="store_true",
-            help="Перезаписывать admin_title, navigation_group и внутренние заметки даже для существующих страниц.",
+            help="Перезаписывать admin_title, navigation_group и внутренние заметки для существующих страниц.",
         )
 
     def handle(self, *args, **options):
@@ -83,18 +90,21 @@ class Command(BaseCommand):
         if frontend_app:
             app_path = Path(frontend_app).resolve()
         else:
-            app_path = (Path(__file__).resolve().parents[4] / "salymbekov-frontend" / "src" / "App.jsx").resolve()
+            app_path = (
+                Path(__file__).resolve().parents[4]
+                / "salymbekov-frontend"
+                / "src"
+                / "App.jsx"
+            ).resolve()
 
-        if not app_path.exists():
-            self.stderr.write(self.style.ERROR(f"Файл frontend маршрутов не найден: {app_path}"))
-            return
+        discovered = {}
+        source_label = "backend canonical route inventory"
+        if app_path.exists():
+            content = app_path.read_text(encoding="utf-8")
+            discovered = collect_cms_routes(content)
+            source_label = f"{app_path} + backend canonical route inventory"
 
-        content = app_path.read_text(encoding="utf-8")
-        routes = collect_cms_routes(content)
-
-        if not routes:
-            self.stderr.write(self.style.WARNING("CMS-маршруты managedPage(...) / cmsOnlyPage(...) не найдены."))
-            return
+        routes = merge_canonical_routes(discovered)
 
         created_count = 0
         updated_count = 0
@@ -111,7 +121,6 @@ class Command(BaseCommand):
             else:
                 cms_only_count += 1
 
-            default_group = path_value.strip("/").split("/")[0] if path_value.strip("/") else "main"
             source_note = (
                 f"Исторический fallback-компонент: {component_name}."
                 if component_name and mode == "managed"
@@ -119,8 +128,8 @@ class Command(BaseCommand):
             )
             defaults = {
                 "admin_title": humanize_path(path_value),
-                "navigation_group": default_group,
-                "internal_notes": f"Страница создана автоматически из frontend-маршрута. {source_note}",
+                "navigation_group": navigation_group_for(path_value),
+                "internal_notes": f"Страница создана автоматически. {source_note}",
             }
 
             page, created = Page.objects.get_or_create(path=path_value, defaults=defaults)
@@ -132,13 +141,20 @@ class Command(BaseCommand):
                 page.admin_title = defaults["admin_title"]
                 page.navigation_group = defaults["navigation_group"]
                 page.internal_notes = defaults["internal_notes"]
-                page.save(update_fields=["admin_title", "navigation_group", "internal_notes", "updated_at"])
+                page.save(
+                    update_fields=[
+                        "admin_title",
+                        "navigation_group",
+                        "internal_notes",
+                        "updated_at",
+                    ]
+                )
                 updated_count += 1
 
         self.stdout.write(
             self.style.SUCCESS(
                 "Готово: "
                 f"маршрутов={len(routes)} (managed={managed_count}, cms-only={cms_only_count}), "
-                f"создано={created_count}, обновлено={updated_count}. Источник: {app_path}"
+                f"создано={created_count}, обновлено={updated_count}. Источник: {source_label}"
             )
         )

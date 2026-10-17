@@ -41,8 +41,14 @@ jobs:
       - name: Safely fill empty CMS pages
         run: python manage.py fill_empty_cms_from_snapshots
 
+      - name: Normalize CMS metadata
+        run: python manage.py normalize_cms_metadata
+
       - name: Initialize homepage CMS
         run: python manage.py seed_home_page
+
+      - name: Audit external media migration candidates
+        run: python manage.py migrate_external_media
 
       - name: Audit CMS content
         run: python manage.py audit_existing_cms_content --only-problems

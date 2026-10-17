@@ -31,3 +31,15 @@ jobs:
 
       - name: Check CMS model migrations
         run: python manage.py makemigrations cms_pages --check --dry-run
+
+      - name: Apply migrations
+        run: python manage.py migrate --noinput
+
+      - name: Bootstrap CMS routes
+        run: python manage.py bootstrap_site_pages
+
+      - name: Safely fill empty CMS pages
+        run: python manage.py fill_empty_cms_from_snapshots
+
+      - name: Audit CMS content
+        run: python manage.py audit_existing_cms_content --only-problems

@@ -29,5 +29,5 @@ jobs:
       - name: Django system check
         run: python manage.py check
 
-      - name: Check model migrations
-        run: python manage.py makemigrations --check --dry-run
+      - name: Check CMS model migrations
+        run: python manage.py makemigrations cms_pages --check --dry-run

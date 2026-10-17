@@ -1,13 +1,18 @@
 # Virtual environment
 venv/
+env/
+.venv/
 
-# Database
+# Databases and exports
 db.sqlite3
+db.sqlite3-journal
+*.sqlite3
+heroku_data*.json
+*.dump
+*.sql
 
-# Static files
+# Generated/static/media files
 staticfiles/
-
-# Media files
 media/
 
 # Python
@@ -16,7 +21,6 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
-env/
 pip-log.txt
 pip-delete-this-directory.txt
 .tox/
@@ -27,21 +31,17 @@ nosetests.xml
 coverage.xml
 *.cover
 *.log
-.git
-.mypy_cache
-.pytest_cache
-.hypothesis
+.mypy_cache/
+.pytest_cache/
+.hypothesis/
 
 # Django
-*.log
 local_settings.py
-db.sqlite3
-db.sqlite3-journal
 
-# Environment variables
+# Environment variables and secrets
 .env
-.env.local
-.env.production
+.env.*
+!.env.example
 
 # IDE
 .vscode/

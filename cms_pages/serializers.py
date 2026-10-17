@@ -186,8 +186,14 @@ class PageDetailSerializer(LocalizedSerializerMixin, serializers.ModelSerializer
     def get_data(self, obj):
         payload = dict(obj.data or {})
         media_items = obj.media_items.all()
-        hero_item = next((item for item in media_items if item.is_hero and item.resolved_url), None)
-        fallback_hero = next((item for item in media_items if item.media_type == PageMedia.TYPE_IMAGE and item.resolved_url), None)
+        hero_item = next(
+            (
+                item
+                for item in media_items
+                if item.is_hero and item.media_type == PageMedia.TYPE_IMAGE and item.resolved_url
+            ),
+            None,
+        )
 
         payload["force_backend_render"] = obj.force_backend_render
         payload["sections"] = PageSectionSerializer(obj.sections.all(), many=True, context=self.context).data
@@ -195,5 +201,8 @@ class PageDetailSerializer(LocalizedSerializerMixin, serializers.ModelSerializer
         payload["stats"] = PageStatSerializer(obj.stats.all(), many=True, context=self.context).data
         payload["documents"] = self.get_documents(obj)
         payload["links"] = self.get_links(obj)
-        payload["hero_image"] = (hero_item or fallback_hero).resolved_url if (hero_item or fallback_hero) else payload.get("hero_image")
+        if hero_item:
+            payload["hero_image"] = hero_item.resolved_url
+        elif not payload.get("hero_image"):
+            payload.pop("hero_image", None)
         return payload

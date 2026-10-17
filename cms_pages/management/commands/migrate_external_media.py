@@ -7,7 +7,7 @@ from urllib.request import Request, urlopen
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import FileSystemStorage, default_storage
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Max
 from django.utils.text import slugify
 
@@ -57,6 +57,11 @@ class Command(BaseCommand):
             help="Persist migration. Without this flag the command only audits remaining external assets.",
         )
         parser.add_argument(
+            "--strict",
+            action="store_true",
+            help="Fail if any downloadable CMS media/document remains external or any migration fails.",
+        )
+        parser.add_argument(
             "--only-path",
             action="append",
             default=[],
@@ -71,19 +76,17 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.apply = options["apply"]
+        self.strict = options["strict"]
         self.timeout = options["timeout"]
         only_paths = set(options["only_path"] or [])
 
         # Heroku's local filesystem is ephemeral. Never convert durable CMS URLs
         # into /media/... links backed by a filesystem that disappears on restart.
         if self.apply and getattr(settings, "IS_PRODUCTION", False) and isinstance(default_storage, FileSystemStorage):
-            self.stderr.write(
-                self.style.WARNING(
-                    "Skipping external media migration: production is using FileSystemStorage. "
-                    "Configure Bucketeer/S3 first so migrated files remain persistent."
-                )
+            raise CommandError(
+                "External media migration requires Bucketeer/S3 in production; "
+                "FileSystemStorage is not allowed."
             )
-            return
 
         queryset = Page.objects.all().prefetch_related("sections", "media_items", "documents", "links")
         if only_paths:
@@ -142,6 +145,35 @@ class Command(BaseCommand):
             self.stderr.write("Unresolved external assets:")
             for path, url, reason in unresolved:
                 self.stderr.write(f"  {path} | {url} | {reason}")
+
+        if self.apply and self.strict:
+            remaining = self._remaining_external_assets(only_paths)
+            if failed or remaining:
+                if remaining:
+                    self.stderr.write("External CMS assets still remaining after migration:")
+                    for path, url in remaining:
+                        self.stderr.write(f"  {path} | {url}")
+                raise CommandError(
+                    "Strict CMS media migration failed: "
+                    f"download_failures={failed}, remaining_external_assets={len(remaining)}."
+                )
+
+            self.stdout.write(
+                self.style.SUCCESS(
+                    "Strict CMS media migration passed: no downloadable external media/documents remain."
+                )
+            )
+
+    def _remaining_external_assets(self, only_paths):
+        queryset = Page.objects.all().prefetch_related("sections", "media_items", "documents", "links")
+        if only_paths:
+            queryset = queryset.filter(path__in=only_paths)
+
+        remaining = []
+        for page in queryset:
+            for url in sorted(self._collect_page_refs(page)):
+                remaining.append((page.path, url))
+        return remaining
 
     def _collect_page_refs(self, page):
         refs = set()

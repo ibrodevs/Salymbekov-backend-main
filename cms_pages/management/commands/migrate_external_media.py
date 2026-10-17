@@ -4,7 +4,9 @@ from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
+from django.conf import settings
 from django.core.files.base import ContentFile
+from django.core.files.storage import FileSystemStorage, default_storage
 from django.core.management.base import BaseCommand
 from django.db.models import Max
 from django.utils.text import slugify
@@ -67,6 +69,17 @@ class Command(BaseCommand):
         self.apply = options["apply"]
         self.timeout = options["timeout"]
         only_paths = set(options["only_path"] or [])
+
+        # Heroku's local filesystem is ephemeral. Never convert durable CMS URLs
+        # into /media/... links backed by a filesystem that disappears on restart.
+        if self.apply and getattr(settings, "IS_PRODUCTION", False) and isinstance(default_storage, FileSystemStorage):
+            self.stderr.write(
+                self.style.WARNING(
+                    "Skipping external media migration: production is using FileSystemStorage. "
+                    "Configure Bucketeer/S3 first so migrated files remain persistent."
+                )
+            )
+            return
 
         queryset = Page.objects.all().prefetch_related("sections", "media_items", "documents", "links")
         if only_paths:

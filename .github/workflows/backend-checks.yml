@@ -32,6 +32,16 @@ jobs:
       - name: Check CMS model migrations
         run: python manage.py makemigrations cms_pages --check --dry-run
 
+      - name: Generate missing proxy migrations for migration-graph validation
+        run: |
+          python manage.py makemigrations about_pages ait_pages center_pages clinical_pages cooperation_pages home_pages infrastructure_pages it_college_pages mfm_pages postgrad_pages program_pages university_pages --noinput
+          for app in about_pages ait_pages center_pages clinical_pages cooperation_pages home_pages infrastructure_pages it_college_pages mfm_pages postgrad_pages program_pages university_pages; do
+            if [ -f "$app/migrations/0001_initial.py" ]; then
+              echo "===== $app/migrations/0001_initial.py ====="
+              cat "$app/migrations/0001_initial.py"
+            fi
+          done
+
       - name: Apply migrations
         run: python manage.py migrate --noinput
 

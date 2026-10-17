@@ -31,6 +31,10 @@ def collect_urls(value):
     return {clean_asset_url(match) for match in WORDPRESS_ASSET_RE.findall(str(value))}
 
 
+def is_downloadable_url(value):
+    return bool(value) and value.startswith(("http://", "https://"))
+
+
 def safe_filename(url):
     parsed = urlparse(url)
     original = Path(parsed.path).name or "asset"
@@ -41,9 +45,9 @@ def safe_filename(url):
 
 class Command(BaseCommand):
     help = (
-        "Finds old salymbekov.com WordPress uploads used by CMS pages and sections. "
-        "With --apply downloads them into Django storage (S3/Bucketeer in production) "
-        "and rewrites CMS HTML/JSON/links to the new storage URLs."
+        "Moves CMS images/files/documents from external URLs into Django storage. "
+        "It also finds salymbekov.com WordPress upload URLs embedded in page HTML/JSON. "
+        "Video/link records remain external. With --apply, stored URLs are rewritten."
     )
 
     def add_arguments(self, parser):
@@ -98,7 +102,7 @@ class Command(BaseCommand):
 
             pages_with_refs += 1
             references_found += len(refs)
-            self.stdout.write(f"{page.path}: {len(refs)} external WordPress asset(s)")
+            self.stdout.write(f"{page.path}: {len(refs)} external CMS asset(s)")
 
             if not self.apply:
                 for url in sorted(refs):
@@ -142,6 +146,9 @@ class Command(BaseCommand):
     def _collect_page_refs(self, page):
         refs = set()
 
+        # Embedded legacy WordPress assets are files, even when they are buried
+        # in rich text or page-specific JSON. Ordinary external hyperlinks are
+        # deliberately not downloaded.
         for field_name in ("body_ru", "body_en", "body_kg"):
             refs.update(collect_urls(getattr(page, field_name, "")))
 
@@ -154,14 +161,16 @@ class Command(BaseCommand):
         except (TypeError, ValueError):
             pass
 
+        # PageMedia and PageDocument are explicitly CMS-managed assets. Move all
+        # downloadable external image/file records into our storage, not just
+        # WordPress URLs. Keep video embeds such as YouTube external by design.
         for media in page.media_items.all():
-            refs.update(collect_urls(media.external_url))
+            if media.media_type != PageMedia.TYPE_VIDEO and is_downloadable_url(media.external_url):
+                refs.add(clean_asset_url(media.external_url))
 
         for document in page.documents.all():
-            refs.update(collect_urls(document.external_url))
-
-        for link in page.links.all():
-            refs.update(collect_urls(link.url))
+            if is_downloadable_url(document.external_url):
+                refs.add(clean_asset_url(document.external_url))
 
         return refs
 
@@ -177,7 +186,7 @@ class Command(BaseCommand):
             return response.read()
 
     def _migrate_asset(self, page, url):
-        existing_media = page.media_items.filter(external_url=url).first()
+        existing_media = page.media_items.filter(external_url=url).exclude(media_type=PageMedia.TYPE_VIDEO).first()
         existing_document = page.documents.filter(external_url=url).first()
 
         if existing_media and existing_media.file:
@@ -260,9 +269,3 @@ class Command(BaseCommand):
                     section_update_fields.append(field_name)
             if section_update_fields:
                 section.save(update_fields=[*section_update_fields, "updated_at"])
-
-        for link in page.links.all():
-            new_url = replacements.get(link.url)
-            if new_url:
-                link.url = new_url
-                link.save(update_fields=["url", "updated_at"])

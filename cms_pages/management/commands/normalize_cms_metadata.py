@@ -39,6 +39,13 @@ BAD_VALUES = {
 }
 
 
+def remove_bad_fragments(value):
+    updated = value or ""
+    for bad_value in BAD_VALUES:
+        updated = updated.replace(bad_value, "")
+    return updated
+
+
 class Command(BaseCommand):
     help = (
         "Fills known missing CMS metadata in RU/EN/KG and removes known snapshot "
@@ -57,16 +64,20 @@ class Command(BaseCommand):
             update_fields = []
             for lang in ("ru", "en", "kg"):
                 title_field = f"title_{lang}"
-                current_title = (getattr(page, title_field, "") or "").strip()
-                if not current_title or current_title in BAD_VALUES:
-                    setattr(page, title_field, titles[lang])
+                current_title = getattr(page, title_field, "") or ""
+                cleaned_title = remove_bad_fragments(current_title).strip()
+                if not cleaned_title:
+                    cleaned_title = titles[lang]
+                if cleaned_title != current_title:
+                    setattr(page, title_field, cleaned_title)
                     update_fields.append(title_field)
 
                 for field_prefix in ("subtitle", "body"):
                     field_name = f"{field_prefix}_{lang}"
-                    current = (getattr(page, field_name, "") or "").strip()
-                    if current in BAD_VALUES:
-                        setattr(page, field_name, "")
+                    current = getattr(page, field_name, "") or ""
+                    cleaned = remove_bad_fragments(current)
+                    if cleaned != current:
+                        setattr(page, field_name, cleaned)
                         update_fields.append(field_name)
 
             if path == "/science/events/conferences":
@@ -76,18 +87,16 @@ class Command(BaseCommand):
                         setattr(page, body_field, CONFERENCE_COPY[lang])
                         update_fields.append(body_field)
 
-            # The imported snapshot can also contain the bad phrase in JSON data.
             serialized = json.dumps(page.data or {}, ensure_ascii=False)
-            updated_serialized = serialized
-            for bad_value in BAD_VALUES:
-                updated_serialized = updated_serialized.replace(bad_value, "")
+            updated_serialized = remove_bad_fragments(serialized)
             if updated_serialized != serialized:
                 page.data = json.loads(updated_serialized)
                 update_fields.append("data")
 
             if update_fields:
-                page.save(update_fields=[*dict.fromkeys(update_fields), "updated_at"])
+                unique_fields = list(dict.fromkeys(update_fields))
+                page.save(update_fields=[*unique_fields, "updated_at"])
                 changed_pages += 1
-                self.stdout.write(f"Updated metadata: {path} ({', '.join(dict.fromkeys(update_fields))})")
+                self.stdout.write(f"Updated metadata: {path} ({', '.join(unique_fields)})")
 
         self.stdout.write(self.style.SUCCESS(f"CMS metadata normalization complete: changed={changed_pages}."))

@@ -10,8 +10,17 @@ from cms_pages.models import Page
 URL_RE = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
 PLACEHOLDER_MARKERS = (
     "This is the about page.",
+    "Here are our services.",
+    "Contact us here.",
     "Положительно для малейшего ухода",
     "via.placeholder.com",
+)
+TRANSLATION_KEY_PREFIXES = (
+    "navbar.",
+    "mission.",
+    "rector.",
+    "aboutAIT.",
+    "lawsRegulations.",
 )
 LEGACY_HOSTS = {"salymbekov.com", "www.salymbekov.com"}
 
@@ -30,10 +39,16 @@ def is_legacy_url(url):
     return host in LEGACY_HOSTS
 
 
+def looks_like_translation_key(value):
+    clean = (value or "").strip()
+    return any(clean.startswith(prefix) for prefix in TRANSLATION_KEY_PREFIXES)
+
+
 class Command(BaseCommand):
     help = (
         "Audits the CMS routes that already exist in the new site. Reports missing languages, "
-        "known placeholder text, old salymbekov.com assets and other external media/document references."
+        "known placeholder text, unresolved translation keys, old salymbekov.com assets and "
+        "other external media/document references."
     )
 
     def add_arguments(self, parser):
@@ -51,13 +66,16 @@ class Command(BaseCommand):
 
             for lang in ("ru", "en", "kg"):
                 title = getattr(page, f"title_{lang}", "") or ""
+                subtitle = getattr(page, f"subtitle_{lang}", "") or ""
                 body = getattr(page, f"body_{lang}", "") or ""
                 if not title.strip():
                     problems.append(f"missing_title_{lang}")
+                if looks_like_translation_key(title):
+                    problems.append(f"translation_key_title_{lang}:{title.strip()}")
                 if not body.strip() and not page.sections.exists() and not page.media_items.exists() and not page.documents.exists():
                     problems.append(f"missing_content_{lang}")
 
-                combined = f"{title}\n{body}"
+                combined = f"{title}\n{subtitle}\n{body}"
                 for marker in PLACEHOLDER_MARKERS:
                     if marker.lower() in combined.lower():
                         problems.append(f"placeholder:{marker}")

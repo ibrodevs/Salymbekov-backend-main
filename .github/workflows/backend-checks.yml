@@ -29,6 +29,26 @@ jobs:
       - name: Django system check
         run: python manage.py check
 
+      - name: Check production S3 settings
+        env:
+          DJANGO_SETTINGS_MODULE: core.production_settings
+          BUCKETEER_AWS_ACCESS_KEY_ID: test-access-key
+          BUCKETEER_AWS_SECRET_ACCESS_KEY: test-secret-key
+          BUCKETEER_AWS_REGION: us-east-1
+          BUCKETEER_BUCKET_NAME: salymbekov-ci-test
+        run: |
+          python - <<'PY'
+          import django
+          django.setup()
+          from django.conf import settings
+          from django.core.files.storage import default_storage
+
+          assert "storages.backends.s3" in default_storage.__class__.__module__
+          assert default_storage.location == "public"
+          assert settings.MEDIA_URL == "https://salymbekov-ci-test.s3.amazonaws.com/public/"
+          print("Production media storage is S3-only and uses public/ prefix")
+          PY
+
       - name: Check model migrations
         run: python manage.py makemigrations --check --dry-run
 

@@ -26,6 +26,12 @@ HOME_PAGE_DATA = {
     },
 }
 
+HOME_BODY = {
+    "ru": "Салымбеков Университет — образовательная, научная и клиническая среда для подготовки современных специалистов.",
+    "en": "Salymbekov University is an educational, scientific and clinical environment for training modern professionals.",
+    "kg": "Салымбеков Университети — заманбап адистерди даярдоочу билим берүү, илимий жана клиникалык чөйрө.",
+}
+
 
 class Command(BaseCommand):
     help = "Создает CMS-настройки главной страницы, не перезаписывая уже настроенную администратором главную."
@@ -43,7 +49,21 @@ class Command(BaseCommand):
             defaults={"admin_title": "Home", "navigation_group": "home"},
         )
 
-        if not created and page.data.get("render_mode") == "homepage" and not options["force"]:
+        already_configured = page.data.get("render_mode") == "homepage"
+
+        # Even an already configured homepage should have complete RU/EN/KG text
+        # fields for API/audit consistency. Fill only blanks; never overwrite
+        # administrator text unless --force is explicitly requested.
+        body_changed = False
+        for lang, value in HOME_BODY.items():
+            field_name = f"body_{lang}"
+            if options["force"] or not (getattr(page, field_name, "") or "").strip():
+                setattr(page, field_name, value)
+                body_changed = True
+
+        if not created and already_configured and not options["force"]:
+            if body_changed:
+                page.save(update_fields=["body_ru", "body_en", "body_kg", "updated_at"])
             self.stdout.write(
                 self.style.SUCCESS("Главная уже настроена через CMS; существующие настройки администратора сохранены.")
             )

@@ -73,9 +73,9 @@ class News(models.Model):
         help_text="Ссылка на оригинальную новость",
     )
 
-    title_en = models.CharField(max_length=255, verbose_name="Заголовок (EN)")
-    title_ru = models.CharField(max_length=255, verbose_name="Заголовок (RU)")
-    title_kg = models.CharField(max_length=255, verbose_name="Заголовок (KG)")
+    title_en = models.CharField(max_length=500, verbose_name="Заголовок (EN)")
+    title_ru = models.CharField(max_length=500, verbose_name="Заголовок (RU)")
+    title_kg = models.CharField(max_length=500, verbose_name="Заголовок (KG)")
 
     short_description_en = models.TextField(
         blank=True,

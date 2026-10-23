@@ -114,6 +114,18 @@ class CmsPagesTestCase(TestCase):
         self.assertEqual(payload["data"]["sections"][0]["title"], "Бөлүм")
         self.assertEqual(payload["data"]["links"][0]["title"], "Шилтеме")
 
+    def test_missing_translation_does_not_mix_russian_body_into_english(self):
+        self.page.body_en = ""
+        self.page.save(update_fields=["body_en", "updated_at"])
+
+        response = self.client.get(reverse("cms-pages-by-path"), {"path": "about", "lang": "en"})
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+
+        self.assertEqual(payload["title"], "About us")
+        self.assertEqual(payload["body"], "")
+        self.assertNotIn("Основной текст", payload["body"])
+
 
 class BootstrapRouteParsingTests(SimpleTestCase):
     def test_collects_managed_cms_only_and_home_routes(self):

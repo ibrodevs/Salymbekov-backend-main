@@ -1,9 +1,19 @@
+import re
+
 from rest_framework import serializers
 
 from .models import Page, PageCard, PageDocument, PageLink, PageMedia, PageSection, PageStat
 
 
 SUPPORTED_LANGUAGES = {"ru", "en", "kg"}
+LANGUAGE_ALIASES = {"ky": "kg"}
+LANGUAGE_SUFFIX_RE = re.compile(r"^(?P<base>.+)_(?P<lang>ru|en|kg|ky)$")
+
+
+def normalize_language(lang):
+    normalized = str(lang or "ru").lower().split("-")[0]
+    normalized = LANGUAGE_ALIASES.get(normalized, normalized)
+    return normalized if normalized in SUPPORTED_LANGUAGES else "ru"
 
 
 def resolve_language(request):
@@ -14,19 +24,83 @@ def resolve_language(request):
     if params is None:
         params = getattr(request, "GET", {})
 
-    lang = params.get("lang", "ru").lower()
-    return lang if lang in SUPPORTED_LANGUAGES else "ru"
+    return normalize_language(params.get("lang", "ru"))
+
+
+def language_candidates(lang):
+    normalized = normalize_language(lang)
+    return list(dict.fromkeys([normalized, "ru", "en", "kg"]))
 
 
 def translated_value(obj, base_name, lang):
-    candidates = [lang, "ru", "en", "kg"]
-
-    for suffix in candidates:
+    for suffix in language_candidates(lang):
         value = getattr(obj, f"{base_name}_{suffix}", "")
         if value:
             return value
 
     return ""
+
+
+def translated_mapping_value(mapping, lang):
+    normalized_mapping = {}
+    for key, value in mapping.items():
+        key_lang = LANGUAGE_ALIASES.get(str(key).lower(), str(key).lower())
+        if key_lang in SUPPORTED_LANGUAGES:
+            normalized_mapping[key_lang] = value
+
+    for candidate in language_candidates(lang):
+        value = normalized_mapping.get(candidate)
+        if value not in (None, "", [], {}):
+            return value
+
+    return ""
+
+
+def localize_json_value(value, lang):
+    """Recursively localize arbitrary JSON stored in Page.data.
+
+    Supports both common CMS shapes:
+    - {"ru": "...", "en": "...", "kg": "..."}
+    - {"title_ru": "...", "title_en": "...", "title_kg": "..."}
+
+    Nested dictionaries/lists are processed recursively so custom landing-page
+    blocks, buttons, badges and item arrays switch language together with the
+    normal Page fields.
+    """
+    if isinstance(value, list):
+        return [localize_json_value(item, lang) for item in value]
+
+    if not isinstance(value, dict):
+        return value
+
+    normalized_keys = {
+        LANGUAGE_ALIASES.get(str(key).lower(), str(key).lower())
+        for key in value.keys()
+    }
+
+    # A dictionary made only of language keys is a direct translation bundle.
+    if normalized_keys and normalized_keys.issubset(SUPPORTED_LANGUAGES):
+        selected = translated_mapping_value(value, lang)
+        return localize_json_value(selected, lang)
+
+    result = {}
+    suffixed_groups = {}
+
+    for key, item in value.items():
+        match = LANGUAGE_SUFFIX_RE.match(str(key))
+        if match:
+            base = match.group("base")
+            suffix = normalize_language(match.group("lang"))
+            suffixed_groups.setdefault(base, {})[suffix] = item
+            continue
+
+        result[key] = localize_json_value(item, lang)
+
+    for base, translations in suffixed_groups.items():
+        selected = translated_mapping_value(translations, lang)
+        result[base] = localize_json_value(selected, lang)
+
+    return result
 
 
 class LocalizedSerializerMixin:
@@ -184,7 +258,7 @@ class PageDetailSerializer(LocalizedSerializerMixin, serializers.ModelSerializer
         return PageLinkSerializer(obj.links.all(), many=True, context=self.context).data
 
     def get_data(self, obj):
-        payload = dict(obj.data or {})
+        payload = localize_json_value(dict(obj.data or {}), self.get_lang())
         media_items = obj.media_items.all()
         hero_item = next(
             (

@@ -86,11 +86,10 @@ class Command(BaseCommand):
             setattr(page, f"seo_title_{lang}", title)
             setattr(page, f"subtitle_{lang}", "")
             setattr(page, f"seo_description_{lang}", "")
-        # The official site publishes page text in Russian for every language;
-        # empty KG/EN bodies fall back to the Russian text in the API.
-        page.body_ru = item["body_ru"]
-        page.body_en = ""
-        page.body_kg = ""
+            # Keep each language body independent. Older payloads may only have
+            # body_ru; the release repair command fills missing EN/KG bodies from
+            # the corresponding localized WordPress pages.
+            setattr(page, f"body_{lang}", item.get(f"body_{lang}", ""))
 
         page.template = Page.TEMPLATE_DEFAULT
         page.force_backend_render = True

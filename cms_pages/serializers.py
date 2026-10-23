@@ -240,7 +240,13 @@ class PageDetailSerializer(LocalizedSerializerMixin, serializers.ModelSerializer
         return translated_value(obj, "subtitle", self.get_lang())
 
     def get_body(self, obj):
-        return translated_value(obj, "body", self.get_lang())
+        lang = self.get_lang()
+        localized_body = getattr(obj, f"body_{lang}", "") or ""
+        if localized_body:
+            return localized_body
+        # Never mix an English/Kyrgyz page header with a Russian body. Legacy
+        # pages are repaired from their localized WordPress source during release.
+        return obj.body_ru or "" if lang == "ru" else ""
 
     def get_seo_title(self, obj):
         return translated_value(obj, "seo_title", self.get_lang())

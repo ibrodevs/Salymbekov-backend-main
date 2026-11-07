@@ -103,6 +103,18 @@ def apply_update():
                     new = rewrite(old)
                     if new != old:
                         setattr(obj, field.name, new); changes.append(field.name)
+            if path == '/education/center/about':
+                # Old snapshots used generic or Russian titles even in other languages.
+                titles = {'ru': 'О кампусе', 'en': 'About the campus', 'kg': 'Кампус жөнүндө'}
+                generic = {'', 'о центре', 'about', 'about center', 'about the center', 'борбор жөнүндө'}
+                for lang, title in titles.items():
+                    for base in ('title', 'seo_title'):
+                        field = f'{base}_{lang}'
+                        if hasattr(obj, field) and getattr(obj, field).strip().casefold() in generic:
+                            setattr(obj, field, title)
+                            changes.append(field)
+                if hasattr(obj, 'admin_title') and obj.admin_title.strip().casefold() in generic:
+                    obj.admin_title = titles['ru']; changes.append('admin_title')
             if changes:
                 obj.save(update_fields=changes); count += 1
         counts[model._meta.label] = count

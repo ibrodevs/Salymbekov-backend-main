@@ -100,3 +100,15 @@ class UniversityUpdateTests(TestCase):
         original.refresh_from_db()
         self.assertEqual(original.admin_title, 'Before')
         self.assertEqual(ContentSnapshot.objects.count(), count)
+
+
+    def test_campus_about_metadata_is_localized_without_overwriting_custom_titles(self):
+        page, _ = Page.objects.update_or_create(path='/education/center/about', defaults={
+            'admin_title': 'О центре', 'title_ru': 'О центре', 'title_en': 'About', 'title_kg': 'О центре',
+        })
+        apply_update()
+        page.refresh_from_db()
+        self.assertEqual((page.title_ru, page.title_en, page.title_kg), ('О кампусе', 'About the campus', 'Кампус жөнүндө'))
+        page.title_ru = 'Нарын кампус — история и развитие'; page.save()
+        apply_update(); page.refresh_from_db()
+        self.assertEqual(page.title_ru, 'Нарын кампус — история и развитие')

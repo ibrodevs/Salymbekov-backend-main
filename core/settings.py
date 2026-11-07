@@ -473,3 +473,22 @@ UNFOLD = {
         },
     },
 }
+
+# Anonymous appeals: use only the configured service sender, never user input.
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() == "true"
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").lower() == "true"
+EMAIL_TIMEOUT = 15
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "")
+ANONYMOUS_MESSAGE_RECIPIENT = os.getenv("ANONYMOUS_MESSAGE_RECIPIENT", "")
+ANONYMOUS_MESSAGE_RATE = os.getenv("ANONYMOUS_MESSAGE_RATE", "5/hour")
+# Use a shared cache across workers; throttle keys expire after the rate window.
+if os.getenv("REDIS_URL"):
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": os.environ["REDIS_URL"]}}
+
+# Trust forwarded IPs only when the deployment explicitly specifies its proxy chain.
+REST_FRAMEWORK["NUM_PROXIES"] = int(os.getenv("TRUSTED_PROXY_HOPS", "0"))

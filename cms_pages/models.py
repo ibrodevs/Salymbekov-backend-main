@@ -88,6 +88,7 @@ class Page(TimeStampedModel):
         default=False,
         help_text="Если включено, frontend будет использовать CMS-страницу даже при минимальном наполнении.",
     )
+    show_media_gallery = models.BooleanField("Показывать отдельную галерею", default=False)
     is_published = models.BooleanField("Опубликовано", default=True)
 
     class Meta:
@@ -139,6 +140,7 @@ class OrderedPageItem(TimeStampedModel):
 
 
 class PageSection(OrderedPageItem):
+    is_active = models.BooleanField("Активна", default=True)
     page = models.ForeignKey(Page, on_delete=models.CASCADE, related_name="sections")
 
     title_ru = models.CharField("Заголовок (рус)", max_length=255, blank=True)
@@ -162,6 +164,7 @@ class PageSection(OrderedPageItem):
 
 
 class PageCard(OrderedPageItem):
+    is_active = models.BooleanField("Активна", default=True)
     page = models.ForeignKey(Page, on_delete=models.CASCADE, related_name="cards")
 
     title_ru = models.CharField("Заголовок (рус)", max_length=255, blank=True)
@@ -263,6 +266,7 @@ class PageDocument(OrderedPageItem):
 
 
 class PageLink(OrderedPageItem):
+    is_active = models.BooleanField("Активна", default=True)
     page = models.ForeignKey(Page, on_delete=models.CASCADE, related_name="links")
     url = models.CharField(
         "Ссылка",
@@ -281,3 +285,14 @@ class PageLink(OrderedPageItem):
 
     def __str__(self):
         return self.title_ru or self.title_en or self.title_kg or self.url
+
+
+class ContentSnapshot(models.Model):
+    """Private rollback snapshot; never exposed through public serializers or APIs."""
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    digest = models.CharField(max_length=64, unique=True)
+    payload = models.TextField()
+
+    class Meta:
+        ordering = ['-created_at']

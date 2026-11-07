@@ -55,6 +55,9 @@ jobs:
       - name: Apply migrations
         run: python manage.py migrate --noinput
 
+      - name: Test CMS updates, preservation and anonymous appeals
+        run: python manage.py test contact_pages cms_pages
+
       - name: Bootstrap CMS routes
         run: python manage.py bootstrap_site_pages
 

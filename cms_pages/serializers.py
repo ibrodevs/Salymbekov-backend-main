@@ -261,7 +261,7 @@ class PageDetailSerializer(LocalizedSerializerMixin, serializers.ModelSerializer
         return PageDocumentSerializer(obj.documents.all(), many=True, context=self.context).data
 
     def get_links(self, obj):
-        return PageLinkSerializer(obj.links.all(), many=True, context=self.context).data
+        return PageLinkSerializer([link for link in obj.links.all() if link.is_active], many=True, context=self.context).data
 
     def get_data(self, obj):
         payload = localize_json_value(dict(obj.data or {}), self.get_lang())
@@ -275,9 +275,10 @@ class PageDetailSerializer(LocalizedSerializerMixin, serializers.ModelSerializer
             None,
         )
 
+        payload["show_media_gallery"] = obj.show_media_gallery
         payload["force_backend_render"] = obj.force_backend_render
-        payload["sections"] = PageSectionSerializer(obj.sections.all(), many=True, context=self.context).data
-        payload["cards"] = PageCardSerializer(obj.cards.all(), many=True, context=self.context).data
+        payload["sections"] = PageSectionSerializer([item for item in obj.sections.all() if item.is_active], many=True, context=self.context).data
+        payload["cards"] = PageCardSerializer([item for item in obj.cards.all() if item.is_active], many=True, context=self.context).data
         payload["stats"] = PageStatSerializer(obj.stats.all(), many=True, context=self.context).data
         payload["documents"] = self.get_documents(obj)
         payload["links"] = self.get_links(obj)

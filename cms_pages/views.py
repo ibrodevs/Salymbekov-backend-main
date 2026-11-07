@@ -13,7 +13,7 @@ class PageByPathView(RetrieveAPIView):
         path = normalize_path(raw_path)
 
         queryset = (
-            Page.objects.filter(is_published=True)
+            Page.objects.filter(is_published=True).exclude(path__regex=r"^/education/postgrad(?:/|$)")
             .prefetch_related("sections", "cards", "stats", "media_items", "documents", "links")
         )
         return get_object_or_404(queryset, path=path)
@@ -24,7 +24,7 @@ class PageListView(ListAPIView):
 
     def get_queryset(self):
         return (
-            Page.objects.filter(is_published=True)
+            Page.objects.filter(is_published=True).exclude(path__regex=r"^/education/postgrad(?:/|$)")
             .prefetch_related("sections", "cards", "stats", "media_items", "documents", "links")
             .order_by("navigation_group", "admin_title", "path")
         )

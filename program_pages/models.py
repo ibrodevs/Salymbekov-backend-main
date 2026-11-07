@@ -7,7 +7,7 @@ from .utils import program_scope_query
 class ProgramPageQuerySet(models.QuerySet):
     def for_admin(self):
         return self.filter(
-            program_scope_query("mfm", "ait", "it_college", "postgrad", "center")
+            program_scope_query("mfm", "ait", "it_college", "postgrad", "center", "information")
         )
 
 

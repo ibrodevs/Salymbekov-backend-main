@@ -2,6 +2,7 @@ from django.db import models
 
 
 PROGRAM_PATH_GROUPS = {
+    "information": models.Q(path__in=["/education", "/education/student", "/education/applicant"]),
     "mfm": models.Q(path__startswith="/education/mfm"),
     "ait": models.Q(path__startswith="/education/ait"),
     "it_college": models.Q(path__startswith="/education/it-college"),
@@ -15,7 +16,7 @@ PROGRAM_FAMILY_LABELS = {
     "ait": "AIT",
     "it_college": "IT College",
     "postgrad": "Postgraduate",
-    "center": "Center",
+    "center": "Нарын кампус",
 }
 
 

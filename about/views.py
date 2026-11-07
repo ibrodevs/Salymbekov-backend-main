@@ -14,14 +14,14 @@ class PageContentDetailView(RetrieveAPIView):
     lookup_field = 'slug'
 
     def get_queryset(self):
-        return PageContent.objects.filter(is_active=True).prefetch_related('media')
+        return PageContent.objects.filter(is_active=True).exclude(path__regex=r"^/education/postgrad(?:/|$)").prefetch_related('media')
 
 
 class PageContentListView(ListAPIView):
     serializer_class = PageContentSerializer
 
     def get_queryset(self):
-        return PageContent.objects.filter(is_active=True).prefetch_related('media')
+        return PageContent.objects.filter(is_active=True).exclude(path__regex=r"^/education/postgrad(?:/|$)").prefetch_related('media')
 
 
 class PageContentByPathView(RetrieveAPIView):
@@ -37,7 +37,7 @@ class PageContentByPathView(RetrieveAPIView):
             path = f'/{path}'
 
         try:
-            return PageContent.objects.prefetch_related('media').get(path=path, is_active=True)
+            return PageContent.objects.exclude(path__regex=r'^/education/postgrad(?:/|$)').prefetch_related('media').get(path=path, is_active=True)
         except PageContent.DoesNotExist:
             raise NotFound('Page content not found')
 

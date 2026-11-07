@@ -75,6 +75,7 @@ class BaseCmsPageAdmin(ModelAdmin):
                     "template",
                     "is_published",
                     "force_backend_render",
+                    "show_media_gallery",
                 )
             },
         ),

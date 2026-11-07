@@ -1,0 +1,227 @@
+{
+  "pages": 92,
+  "findings": [
+    {
+      "path": "/",
+      "lang": "ru",
+      "issue": "missing_title"
+    },
+    {
+      "path": "/",
+      "lang": "en",
+      "issue": "missing_title"
+    },
+    {
+      "path": "/",
+      "lang": "kg",
+      "issue": "missing_title"
+    },
+    {
+      "path": "/science/events",
+      "lang": "ru",
+      "issue": "unknown_internal_route",
+      "target": "/science/events/master-classes"
+    },
+    {
+      "path": "/science/events",
+      "lang": "ru",
+      "issue": "unknown_internal_route",
+      "target": "/science/events/round-tables"
+    },
+    {
+      "path": "/science/events",
+      "lang": "en",
+      "issue": "unknown_internal_route",
+      "target": "/science/events/master-classes"
+    },
+    {
+      "path": "/science/events",
+      "lang": "en",
+      "issue": "unknown_internal_route",
+      "target": "/science/events/round-tables"
+    },
+    {
+      "path": "/science/events",
+      "lang": "kg",
+      "issue": "unknown_internal_route",
+      "target": "/science/events/master-classes"
+    },
+    {
+      "path": "/science/events",
+      "lang": "kg",
+      "issue": "unknown_internal_route",
+      "target": "/science/events/round-tables"
+    },
+    {
+      "path": "/science/events/conferences",
+      "lang": "ru",
+      "issue": "missing_title"
+    },
+    {
+      "path": "/science/events/conferences",
+      "lang": "en",
+      "issue": "missing_title"
+    },
+    {
+      "path": "/science/events/conferences",
+      "lang": "kg",
+      "issue": "missing_title"
+    },
+    {
+      "path": "/science/labs/anatomy",
+      "lang": "ru",
+      "issue": "unknown_internal_route",
+      "target": "/science/labs/chemistry"
+    },
+    {
+      "path": "/science/labs/anatomy",
+      "lang": "en",
+      "issue": "unknown_internal_route",
+      "target": "/science/labs/chemistry"
+    },
+    {
+      "path": "/science/labs/anatomy",
+      "lang": "kg",
+      "issue": "unknown_internal_route",
+      "target": "/science/labs/chemistry"
+    },
+    {
+      "path": "/science/labs/biochemistry",
+      "lang": "ru",
+      "issue": "unknown_internal_route",
+      "target": "/science/labs/chemistry"
+    },
+    {
+      "path": "/science/labs/biochemistry",
+      "lang": "en",
+      "issue": "unknown_internal_route",
+      "target": "/science/labs/chemistry"
+    },
+    {
+      "path": "/science/labs/biochemistry",
+      "lang": "kg",
+      "issue": "unknown_internal_route",
+      "target": "/science/labs/chemistry"
+    },
+    {
+      "path": "/science/labs/biology",
+      "lang": "ru",
+      "issue": "unknown_internal_route",
+      "target": "/science/labs/chemistry"
+    },
+    {
+      "path": "/science/labs/biology",
+      "lang": "en",
+      "issue": "unknown_internal_route",
+      "target": "/science/labs/chemistry"
+    },
+    {
+      "path": "/science/labs/biology",
+      "lang": "kg",
+      "issue": "unknown_internal_route",
+      "target": "/science/labs/chemistry"
+    },
+    {
+      "path": "/science/labs/computer",
+      "lang": "ru",
+      "issue": "unknown_internal_route",
+      "target": "/science/labs/chemistry"
+    },
+    {
+      "path": "/science/labs/computer",
+      "lang": "en",
+      "issue": "unknown_internal_route",
+      "target": "/science/labs/chemistry"
+    },
+    {
+      "path": "/science/labs/computer",
+      "lang": "kg",
+      "issue": "unknown_internal_route",
+      "target": "/science/labs/chemistry"
+    },
+    {
+      "path": "/science/labs/interactive",
+      "lang": "ru",
+      "issue": "unknown_internal_route",
+      "target": "/science/labs/chemistry"
+    },
+    {
+      "path": "/science/labs/interactive",
+      "lang": "en",
+      "issue": "unknown_internal_route",
+      "target": "/science/labs/chemistry"
+    },
+    {
+      "path": "/science/labs/interactive",
+      "lang": "kg",
+      "issue": "unknown_internal_route",
+      "target": "/science/labs/chemistry"
+    },
+    {
+      "path": "/science/labs/study",
+      "lang": "ru",
+      "issue": "unknown_internal_route",
+      "target": "/science/labs/chemistry"
+    },
+    {
+      "path": "/science/labs/study",
+      "lang": "en",
+      "issue": "unknown_internal_route",
+      "target": "/science/labs/chemistry"
+    },
+    {
+      "path": "/science/labs/study",
+      "lang": "kg",
+      "issue": "unknown_internal_route",
+      "target": "/science/labs/chemistry"
+    },
+    {
+      "path": "/science/publications",
+      "lang": "ru",
+      "issue": "unknown_internal_route",
+      "target": "/science"
+    },
+    {
+      "path": "/science/publications",
+      "lang": "en",
+      "issue": "unknown_internal_route",
+      "target": "/science"
+    },
+    {
+      "path": "/science/publications",
+      "lang": "kg",
+      "issue": "unknown_internal_route",
+      "target": "/science"
+    },
+    {
+      "path": "/university/councils/development-council",
+      "lang": "ru",
+      "issue": "missing_title"
+    },
+    {
+      "path": "/university/councils/development-council",
+      "lang": "en",
+      "issue": "missing_title"
+    },
+    {
+      "path": "/university/councils/development-council",
+      "lang": "kg",
+      "issue": "missing_title"
+    },
+    {
+      "path": "/university/structure/it-college",
+      "lang": "ru",
+      "issue": "missing_title"
+    },
+    {
+      "path": "/university/structure/it-college",
+      "lang": "en",
+      "issue": "missing_title"
+    },
+    {
+      "path": "/university/structure/it-college",
+      "lang": "kg",
+      "issue": "missing_title"
+    }
+  ]
+}

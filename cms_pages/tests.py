@@ -134,7 +134,7 @@ class BootstrapRouteParsingTests(SimpleTestCase):
         <Route path="/about" element={cmsOnlyPage('/about')} />
         <Route path="/legacy" element={managedPage('/legacy', <LegacyPage />)} />
         """
-        routes = {route["path"]: route for route in collect_cms_routes(source)}
+        routes = {route["path"]: route for route in collect_cms_routes(source).values()}
 
         self.assertEqual(set(routes), {"/", "/about", "/legacy"})
         self.assertEqual(routes["/"]["mode"], "cms-only")

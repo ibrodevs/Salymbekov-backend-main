@@ -285,3 +285,14 @@ class PageLink(OrderedPageItem):
 
     def __str__(self):
         return self.title_ru or self.title_en or self.title_kg or self.url
+
+
+class ContentSnapshot(models.Model):
+    """Private rollback snapshot; never exposed through public serializers or APIs."""
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    digest = models.CharField(max_length=64, unique=True)
+    payload = models.TextField()
+
+    class Meta:
+        ordering = ['-created_at']

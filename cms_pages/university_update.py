@@ -68,7 +68,7 @@ def content_models():
     # News/publications, original documents and historical reports remain intact.
     labels = ['cms_pages', 'about', 'contact_pages']
     return [m for m in apps.get_models() if m._meta.app_label in labels and not m._meta.proxy
-            and m.__name__ not in ['DevelopmentCouncilMember', 'ScientificTechnicalCouncilMember']]
+            and m.__name__ not in ['DevelopmentCouncilMember', 'ScientificTechnicalCouncilMember', 'ContentSnapshot']]
 
 
 def apply_update():

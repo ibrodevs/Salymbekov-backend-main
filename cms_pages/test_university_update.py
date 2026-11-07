@@ -68,3 +68,35 @@ class UniversityUpdateTests(TestCase):
         Page.objects.create(path='/education/postgrad/reopened', admin_title='Old', is_published=True)
         self.assertEqual(self.client.get('/api/pages/by-path/', {'path':'/education/postgrad/reopened'}).status_code, 404)
         self.assertNotIn('/education/postgrad/reopened', str(self.client.get('/api/pages/').json()))
+
+    def test_database_backup_preserves_original_and_is_not_public(self):
+        import json
+        from cms_pages.models import ContentSnapshot
+        original = Page.objects.create(path='/snapshot-test', admin_title='Центр Нарына', body_ru='Оригинальный текст')
+        call_command('update_university_2026', apply=True, database_backup=True, stdout=StringIO())
+        original.refresh_from_db()
+        self.assertEqual(original.admin_title, 'Нарын кампус')
+        snapshot = ContentSnapshot.objects.latest('created_at')
+        record = next(row for row in json.loads(snapshot.payload) if row['model']=='cms_pages.page' and row['pk']==original.pk)
+        self.assertEqual(record['fields']['admin_title'], 'Центр Нарына')
+        self.assertEqual(record['fields']['body_ru'], 'Оригинальный текст')
+        self.assertNotIn('payload', str(self.client.get('/api/pages/').json()))
+        call_command('update_university_2026', apply=True, database_backup=True, stdout=StringIO())
+        count = ContentSnapshot.objects.count()
+        call_command('update_university_2026', apply=True, database_backup=True, stdout=StringIO())
+        self.assertEqual(ContentSnapshot.objects.count(), count)
+
+    def test_failed_update_rolls_back_original_content(self):
+        from unittest.mock import patch
+        from cms_pages.models import ContentSnapshot
+        original = Page.objects.create(path='/rollback-test', admin_title='Before')
+        count = ContentSnapshot.objects.count()
+        def fail_after_write():
+            Page.objects.filter(pk=original.pk).update(admin_title='Partial update')
+            raise RuntimeError('abort update')
+        with patch('cms_pages.management.commands.update_university_2026.apply_update', side_effect=fail_after_write):
+            with self.assertRaises(RuntimeError):
+                call_command('update_university_2026', apply=True, database_backup=True, stdout=StringIO())
+        original.refresh_from_db()
+        self.assertEqual(original.admin_title, 'Before')
+        self.assertEqual(ContentSnapshot.objects.count(), count)

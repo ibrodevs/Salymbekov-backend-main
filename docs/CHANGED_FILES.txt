@@ -1,10 +1,15 @@
+.env.example
+.github/workflows/backend-checks.yml
 .gitignore
+Procfile
 about/views.py
 cms_pages/admin.py
 cms_pages/management/commands/audit_university_2026.py
+cms_pages/management/commands/export_cms_snapshot.py
 cms_pages/management/commands/update_university_2026.py
 cms_pages/migrations/0010_page_show_media_gallery.py
 cms_pages/migrations/0011_archive_program_blocks.py
+cms_pages/migrations/0012_private_content_snapshot.py
 cms_pages/models.py
 cms_pages/serializers.py
 cms_pages/site_routes.py
